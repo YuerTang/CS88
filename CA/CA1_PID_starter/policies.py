@@ -21,27 +21,20 @@ class StackPolicy(object):
         6: RELEASE_WAIT   - Stay at Cube B, wait for gripper to open
     """
 
-    # =========================================================================
-    # CONSTANTS - Tune these values if robot behavior is not ideal
-    # =========================================================================
-
-    # PID gains: control how aggressively the robot moves toward target
     KP = 3.0   # Proportional: higher = faster but may overshoot
     KI = 0.0   # Integral: helps eliminate steady-state error (start with 0)
     KD = 0.2   # Derivative: damping to reduce oscillation
 
-    # Height parameters (in meters)
     HOVER_HEIGHT = 0.08    # How high above objects to hover (safe clearance)
-    CUBE_HEIGHT = 0.02     # Approximate height of cube (for grasp/stack offset)
+    CUBE_HEIGHT = 0.015     # Approximate height of cube (for grasp/stack offset)
 
-    # Control parameters
-    THRESHOLD = 0.03       # Position error threshold to advance phase (3cm)
+    THRESHOLD = 0.01       # Position error threshold to advance phase (1cm)
     WAIT_STEPS = 30        # How many timesteps to wait for gripper actuation
     DT = 0.05              # Time step (20Hz control rate)
 
-    # Gripper states
     GRIPPER_OPEN = -1
     GRIPPER_CLOSE = 1
+    
 
     def __init__(self, obs):
         """
@@ -53,62 +46,27 @@ class StackPolicy(object):
                 - obs['cubeB_pos']: [x, y, z] position of Cube B (to stack on)
                 - obs['robot0_eef_pos']: [x, y, z] robot end-effector position
         """
-        # =====================================================================
-        # STEP 1: Extract object positions from observation
-        # =====================================================================
-        # These positions are RANDOMIZED each episode, so we must read them
-        # from the observation rather than hard-coding absolute values.
 
-        cube_a_pos = np.array(obs['cubeA_pos'])  # Where to pick up
-        cube_b_pos = np.array(obs['cubeB_pos'])  # Where to place
+        cube_a_pos = np.array(obs['cubeA_pos']) 
+        cube_b_pos = np.array(obs['cubeB_pos']) 
 
-        # =====================================================================
-        # STEP 2: Calculate waypoints RELATIVE to object positions
-        # =====================================================================
-        # Each waypoint is a 3D position [x, y, z] that the robot should reach.
-        # We calculate them relative to the observed cube positions.
-
-        # Offset vectors for different heights
-        # Note: obs positions are cube CENTERS
-        # We need to go BELOW the reported center to actually grasp the cube
-        hover_offset = np.array([0, 0, self.HOVER_HEIGHT])  # Above object
-        grasp_offset = np.array([0, 0, -0.01])  # Slightly below cube center to ensure grasp
-        # Stack position: cube B center + one cube height (so A sits on top of B)
+        hover_offset = np.array([0, 0, self.HOVER_HEIGHT])  
+        grasp_offset = np.array([0, 0, -0.01]) #slightly down
         stack_offset = np.array([0, 0, self.CUBE_HEIGHT])
 
         self.waypoints = [
-            # Phase 0: Hover above Cube A
             cube_a_pos + hover_offset,
-
-            # Phase 1: Descend to Cube A (grasp position - at cube center)
             cube_a_pos + grasp_offset,
-
-            # Phase 2: Stay at Cube A (gripper closing) - same position
             cube_a_pos + grasp_offset,
-
-            # Phase 3: Lift Cube A up
             cube_a_pos + hover_offset,
-
-            # Phase 4: Move above Cube B (carrying cube A)
             cube_b_pos + hover_offset + np.array([0, 0, self.CUBE_HEIGHT]),
-
-            # Phase 5: Lower onto Cube B (stack position - one cube height above B's center)
             cube_b_pos + stack_offset,
-
-            # Phase 6: Release position - same as stack position
             cube_b_pos + stack_offset,
         ]
 
-        # =====================================================================
-        # STEP 3: Initialize state variables
-        # =====================================================================
-        self.phase = 0           # Current phase in state machine
-        self.wait_counter = 0    # Counter for grasp/release wait phases
+        self.phase = 0           
+        self.wait_counter = 0    
 
-        # =====================================================================
-        # STEP 4: Initialize PID controller
-        # =====================================================================
-        # PID starts targeting the first waypoint (hover above A)
         self.pid = PID(
             kp=self.KP,
             ki=self.KI,
@@ -135,55 +93,30 @@ class StackPolicy(object):
                 - [3:6] Rotation delta (we use zeros - no rotation control)
                 - [6]   Gripper command (-1=open, +1=close)
         """
-        # =====================================================================
-        # STEP 1: Get current robot position
-        # =====================================================================
         current_pos = np.array(obs['robot0_eef_pos'])
-
-        # =====================================================================
-        # STEP 2: Get control signal from PID controller
-        # =====================================================================
-        # PID computes: output = Kp*error + Ki*integral + Kd*derivative
-        # This gives us the direction and magnitude to move toward the target
         control = self.pid.update(current_pos, self.DT)
-
-        # =====================================================================
-        # STEP 3: Check for phase transition
-        # =====================================================================
-        # We transition to the next phase when:
-        # - Position error is below threshold (we've reached the waypoint)
-        # - For grasp/release phases, we also wait for gripper actuation
 
         error = self.pid.get_error()
 
         if error < self.THRESHOLD:
-            # We've reached the current waypoint
-
             if self.phase in [2, 6]:  # Grasp or Release phases
                 # These phases require WAITING for gripper to actuate
                 self.wait_counter += 1
                 if self.wait_counter >= self.WAIT_STEPS:
                     self._advance_phase()
             else:
-                # Other phases: advance immediately
                 self._advance_phase()
-
-        # =====================================================================
-        # STEP 4: Build the 7D action vector
-        # =====================================================================
         action = np.zeros(7)
 
-        # Position control (from PID)
         action[0] = control[0]  # dx - move in X direction
-        action[1] = control[1]  # dy - move in Y direction
-        action[2] = control[2]  # dz - move in Z direction
+        action[1] = control[1]  
+        action[2] = control[2]  
 
         # Rotation control (not used - keep gripper orientation fixed)
-        action[3] = 0  # rotation around X axis
-        action[4] = 0  # rotation around Y axis
-        action[5] = 0  # rotation around Z axis
+        action[3] = 0  
+        action[4] = 0  
+        action[5] = 0 
 
-        # Gripper control
         action[6] = self._get_gripper_state()
 
         return action
@@ -215,13 +148,11 @@ class StackPolicy(object):
             float: -1 for open, +1 for closed
         """
         if self.phase < 2:
-            # Before grasping: gripper open
+
             return self.GRIPPER_OPEN
         elif self.phase < 6:
-            # Grasping and carrying: gripper closed
             return self.GRIPPER_CLOSE
         else:
-            # Releasing: gripper open
             return self.GRIPPER_OPEN
 
 class NutAssemblyPolicy(object):
