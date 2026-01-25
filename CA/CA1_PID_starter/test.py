@@ -13,7 +13,7 @@ env = suite.make(
     use_camera_obs=False,
 )
 
-RENDER_DELAY = 0.05  # Slow down rendering (50ms per frame)
+# RENDER_DELAY = 0.05  # Slow down rendering (50ms per frame)
 
 # reset the environment
 for episode in range(5):
@@ -26,15 +26,18 @@ for episode in range(5):
         obs, reward, done, info = env.step(action)  # take action in the environment
 
         env.render()  # render on display
-        time.sleep(RENDER_DELAY)  # Slow down for observation
+        # time.sleep(RENDER_DELAY)  # Slow down for observation
 
-        # Debug: print phase and handle rotation
+        # Debug: print phase, handle rotation, and door opening
         handle_qpos = obs.get('handle_qpos', 0)
         if hasattr(handle_qpos, '__len__'):
             handle_qpos = handle_qpos[0]
+        hinge_qpos = obs.get('hinge_qpos', 0)
+        if hasattr(hinge_qpos, '__len__'):
+            hinge_qpos = hinge_qpos[0]
 
         if step % 30 == 0:
-            print(f"Episode {episode+1}, Step {step}: Phase {policy.phase}, handle_qpos={handle_qpos:.3f}")
+            print(f"Step {step}: Phase {policy.phase}, handle={handle_qpos:.3f}, hinge={hinge_qpos:.3f} (need >0.3)")
         step += 1
 
         if reward == 1.0 or done: break
