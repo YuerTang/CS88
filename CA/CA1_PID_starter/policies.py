@@ -204,14 +204,15 @@ class NutAssemblyPolicy(object):
 
     # Height parameters
     HOVER_HEIGHT = 0.08       # Height above nut to hover (same as StackPolicy)
-    GRASP_OFFSET_Z = -0.03    # Grasp below nut center (lower to wrap around nut)
+    GRASP_OFFSET_Z = 0.0      # Grasp at nut level (can't go lower - table in the way)
+    GRASP_OFFSET_Y = 0.04     # Offset to grasp the "top bar" of hollow nut (not center)
     PEG_HOVER_HEIGHT = 0.12   # Height above peg for clearance
     PEG_INSERT_HEIGHT = 0.04  # Height above peg base to release
 
     # Thresholds
     THRESHOLD_TIGHT = 0.008   # For precise positioning - must be very close!
-    THRESHOLD_LOOSE = 0.02    # For insertion phases (5-6, 12-13)
-    WAIT_STEPS = 40           # Steps to wait for gripper actuation
+    THRESHOLD_LOOSE = 0.03    # For insertion phases (5-6, 12-13)
+    WAIT_STEPS = 60           # Steps to wait for gripper actuation (more time to close)
 
     # Gripper states
     GRIPPER_OPEN = -1
@@ -292,12 +293,17 @@ class NutAssemblyPolicy(object):
 
         # DYNAMIC TARGET UPDATE: For grasp phases, track current nut position
         # because nut may have moved/settled since init
-        grasp_offset = np.array([0, 0, self.GRASP_OFFSET_Z])
+        # Grasp the "top bar" of hollow nut by adding Y offset away from robot
         hover_offset = np.array([0, 0, self.HOVER_HEIGHT])
+
+        # Square nut grasp offset: +Y to reach the far edge (top bar)
+        sq_grasp_offset = np.array([0, self.GRASP_OFFSET_Y, self.GRASP_OFFSET_Z])
+        # Round nut grasp offset: -Y to reach the far edge (since it's on -Y side)
+        rd_grasp_offset = np.array([0, -self.GRASP_OFFSET_Y, self.GRASP_OFFSET_Z])
 
         if self.phase in [1, 2]:  # Square nut descend/grasp
             current_nut = np.array(obs['SquareNut_pos'])
-            target = current_nut + grasp_offset
+            target = current_nut + sq_grasp_offset
             self.pid.reset(target=target)
         elif self.phase == 3:  # Square nut lift - track where nut is now
             current_nut = np.array(obs['SquareNut_pos'])
@@ -305,7 +311,7 @@ class NutAssemblyPolicy(object):
             self.pid.reset(target=target)
         elif self.phase in [8, 9]:  # Round nut descend/grasp
             current_nut = np.array(obs['RoundNut_pos'])
-            target = current_nut + grasp_offset
+            target = current_nut + rd_grasp_offset
             self.pid.reset(target=target)
         elif self.phase == 10:  # Round nut lift
             current_nut = np.array(obs['RoundNut_pos'])
