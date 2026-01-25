@@ -203,15 +203,15 @@ class NutAssemblyPolicy(object):
     DT = 0.05
 
     # Height parameters
-    HOVER_HEIGHT = 0.15       # Height above nut to hover
-    GRASP_OFFSET_Z = -0.01    # Grasp slightly below nut center
-    PEG_HOVER_HEIGHT = 0.20   # Higher hover above peg for clearance
-    PEG_INSERT_HEIGHT = 0.06  # Height above peg base to release
+    HOVER_HEIGHT = 0.08       # Height above nut to hover (same as StackPolicy)
+    GRASP_OFFSET_Z = -0.03    # Grasp below nut center (lower to wrap around nut)
+    PEG_HOVER_HEIGHT = 0.12   # Height above peg for clearance
+    PEG_INSERT_HEIGHT = 0.04  # Height above peg base to release
 
     # Thresholds
-    THRESHOLD_TIGHT = 0.015   # For precise positioning (phases 0-4, 7-11)
-    THRESHOLD_LOOSE = 0.03    # For insertion phases (5-6, 12-13)
-    WAIT_STEPS = 30           # Steps to wait for gripper actuation
+    THRESHOLD_TIGHT = 0.008   # For precise positioning - must be very close!
+    THRESHOLD_LOOSE = 0.02    # For insertion phases (5-6, 12-13)
+    WAIT_STEPS = 40           # Steps to wait for gripper actuation
 
     # Gripper states
     GRIPPER_OPEN = -1
