@@ -220,6 +220,7 @@ class NutAssemblyPolicy(object):
 
     # Yaw rotation control (to align gripper with handle direction)
     YAW_GAIN = 0.2            # Proportional gain for yaw rotation (using relative quaternion method)
+    ALIGN_GAIN = 0.3          # Proportional gain for aligning nut with peg
 
     # Gripper states
     GRIPPER_OPEN = -1
@@ -442,6 +443,15 @@ class NutAssemblyPolicy(object):
             if np.sum(np.abs(rel_quat)) > 0:  # Check quaternion is valid
                 yaw_error = R.from_quat(rel_quat).as_euler('xyz')[2]
                 action[5] = self.YAW_GAIN * yaw_error
+        elif self.phase in [5, 6]:  # Square nut MOVE_TO_PEG / INSERT - align nut with peg
+            # Get current nut yaw from its quaternion
+            nut_quat = obs['SquareNut_quat']
+            nut_yaw = R.from_quat(nut_quat).as_euler('xyz')[2]
+            # Snap to nearest 90° alignment (0, π/2, π, -π/2)
+            nearest_aligned = round(nut_yaw / (np.pi / 2)) * (np.pi / 2)
+            # Compute error and apply rotation
+            yaw_error = nearest_aligned - nut_yaw
+            action[5] = self.ALIGN_GAIN * yaw_error
         # Other phases: no rotation (action[3:6] already 0)
 
         return action
