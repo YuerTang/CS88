@@ -206,7 +206,7 @@ class NutAssemblyPolicy(object):
     HOVER_HEIGHT = 0.08       # Height above nut to hover (same as StackPolicy)
     GRASP_OFFSET_Z = 0.0      # Grasp at nut level (can't go lower - table in the way)
     GRASP_OFFSET_Y = 0.04     # Offset to grasp the "top bar" of hollow nut (not center)
-    PEG_HOVER_HEIGHT = 0.12   # Height above peg for clearance
+    PEG_HOVER_HEIGHT = 0.08   # Height above peg for clearance (same as HOVER_HEIGHT)
     PEG_INSERT_HEIGHT = 0.04  # Height above peg base to release
 
     # Thresholds
@@ -290,33 +290,25 @@ class NutAssemblyPolicy(object):
             np.ndarray: 7D action [dx, dy, dz, ax, ay, az, gripper]
         """
         current_pos = np.array(obs['robot0_eef_pos'])
-
         # DYNAMIC TARGET UPDATE: For grasp phases, track current nut position
         # because nut may have moved/settled since init
-        # Grasp the "top bar" of hollow nut by adding Y offset away from robot
+        # get to the hollow part of the nut so you can grasp it
         hover_offset = np.array([0, 0, self.HOVER_HEIGHT])
-
-        # Square nut grasp offset: +Y to reach the far edge (top bar)
+ 
+        # Add something just to get away from reaching the center of the nut
         sq_grasp_offset = np.array([0, self.GRASP_OFFSET_Y, self.GRASP_OFFSET_Z])
-        # Round nut grasp offset: -Y to reach the far edge (since it's on -Y side)
-        rd_grasp_offset = np.array([0, -self.GRASP_OFFSET_Y, self.GRASP_OFFSET_Z])
+        rd_grasp_offset = np.array([0, self.GRASP_OFFSET_Y, self.GRASP_OFFSET_Z])
 
-        if self.phase in [1, 2]:  # Square nut descend/grasp
+        if self.phase in [1, 2]:  # Square nut descend/grasp - track current nut pos
             current_nut = np.array(obs['SquareNut_pos'])
             target = current_nut + sq_grasp_offset
             self.pid.reset(target=target)
-        elif self.phase == 3:  # Square nut lift - track where nut is now
-            current_nut = np.array(obs['SquareNut_pos'])
-            target = current_nut + hover_offset
-            self.pid.reset(target=target)
-        elif self.phase in [8, 9]:  # Round nut descend/grasp
+        # Phase 3 (lift): Use FIXED waypoint, don't track nut (it moves with gripper!)
+        elif self.phase in [8, 9]:  # Round nut descend/grasp - track current nut pos
             current_nut = np.array(obs['RoundNut_pos'])
             target = current_nut + rd_grasp_offset
             self.pid.reset(target=target)
-        elif self.phase == 10:  # Round nut lift
-            current_nut = np.array(obs['RoundNut_pos'])
-            target = current_nut + hover_offset
-            self.pid.reset(target=target)
+        # Phase 10 (lift): Use FIXED waypoint, don't track nut
 
         control = self.pid.update(current_pos, self.DT)
         error = self.pid.get_error()
