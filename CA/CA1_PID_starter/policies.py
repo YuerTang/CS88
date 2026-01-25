@@ -289,6 +289,29 @@ class NutAssemblyPolicy(object):
             np.ndarray: 7D action [dx, dy, dz, ax, ay, az, gripper]
         """
         current_pos = np.array(obs['robot0_eef_pos'])
+
+        # DYNAMIC TARGET UPDATE: For grasp phases, track current nut position
+        # because nut may have moved/settled since init
+        grasp_offset = np.array([0, 0, self.GRASP_OFFSET_Z])
+        hover_offset = np.array([0, 0, self.HOVER_HEIGHT])
+
+        if self.phase in [1, 2]:  # Square nut descend/grasp
+            current_nut = np.array(obs['SquareNut_pos'])
+            target = current_nut + grasp_offset
+            self.pid.reset(target=target)
+        elif self.phase == 3:  # Square nut lift - track where nut is now
+            current_nut = np.array(obs['SquareNut_pos'])
+            target = current_nut + hover_offset
+            self.pid.reset(target=target)
+        elif self.phase in [8, 9]:  # Round nut descend/grasp
+            current_nut = np.array(obs['RoundNut_pos'])
+            target = current_nut + grasp_offset
+            self.pid.reset(target=target)
+        elif self.phase == 10:  # Round nut lift
+            current_nut = np.array(obs['RoundNut_pos'])
+            target = current_nut + hover_offset
+            self.pid.reset(target=target)
+
         control = self.pid.update(current_pos, self.DT)
         error = self.pid.get_error()
 
