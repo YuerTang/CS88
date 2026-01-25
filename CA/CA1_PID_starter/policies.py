@@ -176,22 +176,182 @@ class StackPolicy(object):
 class NutAssemblyPolicy(object):
     """
     Policy for the Nut Assembly task.
+
+    [AI Declaration]: Generated using Claude with the prompt:
+    "Implement NutAssemblyPolicy to fit square nut on square peg and round nut on round peg"
+
     Goal: Fit square nut on square peg and round nut on round peg.
+
+    This policy uses a STATE MACHINE approach with 14 phases:
+    - Phases 0-6: Pick up square nut and place on square peg (peg1)
+    - Phases 7-13: Pick up round nut and place on round peg (peg2)
+
+    Phase Sequence (repeated for each nut):
+        0/7:  HOVER_NUT     - Move above nut (gripper open)
+        1/8:  DESCEND_NUT   - Lower to grasp position (gripper open)
+        2/9:  GRASP_WAIT    - Wait for gripper to close
+        3/10: LIFT_NUT      - Lift nut up (gripper closed)
+        4/11: MOVE_TO_PEG   - Move above target peg (gripper closed)
+        5/12: INSERT_PEG    - Lower nut onto peg (gripper closed)
+        6/13: RELEASE_WAIT  - Wait for gripper to open
     """
+
+    # PID gains (same as StackPolicy)
+    KP = 3.0
+    KI = 0.0
+    KD = 0.2
+    DT = 0.05
+
+    # Height parameters
+    HOVER_HEIGHT = 0.15       # Height above nut to hover
+    GRASP_OFFSET_Z = -0.01    # Grasp slightly below nut center
+    PEG_HOVER_HEIGHT = 0.20   # Higher hover above peg for clearance
+    PEG_INSERT_HEIGHT = 0.06  # Height above peg base to release
+
+    # Thresholds
+    THRESHOLD_TIGHT = 0.015   # For precise positioning (phases 0-4, 7-11)
+    THRESHOLD_LOOSE = 0.03    # For insertion phases (5-6, 12-13)
+    WAIT_STEPS = 30           # Steps to wait for gripper actuation
+
+    # Gripper states
+    GRIPPER_OPEN = -1
+    GRIPPER_CLOSE = 1
+
+    # FIXED peg positions (discovered from MuJoCo simulation)
+    PEG1_POS = np.array([0.23, 0.10, 0.85])   # Square peg
+    PEG2_POS = np.array([0.23, -0.10, 0.85])  # Round peg
+
     def __init__(self, obs):
         """
+        Initialize the NutAssembly policy.
+
         Args:
-            obs (dict): Includes 'SquareNut_pos', 'SquarePeg_pos', etc.
+            obs (dict): Initial observation containing:
+                - obs['SquareNut_pos']: [x, y, z] position of square nut
+                - obs['RoundNut_pos']: [x, y, z] position of round nut
+                - obs['robot0_eef_pos']: [x, y, z] robot end-effector position
         """
-        # Initialize PID controller and assembly sequences here
-        pass
+        # Get nut positions (randomized each episode)
+        square_nut_pos = np.array(obs['SquareNut_pos'])
+        round_nut_pos = np.array(obs['RoundNut_pos'])
+
+        # Build waypoints for both assemblies
+        waypoints_square = self._build_waypoints(square_nut_pos, self.PEG1_POS)
+        waypoints_round = self._build_waypoints(round_nut_pos, self.PEG2_POS)
+        self.waypoints = waypoints_square + waypoints_round
+
+        # State machine
+        self.phase = 0
+        self.wait_counter = 0
+
+        # Initialize PID controller
+        self.pid = PID(
+            kp=self.KP,
+            ki=self.KI,
+            kd=self.KD,
+            target=self.waypoints[0]
+        )
+
+    def _build_waypoints(self, nut_pos, peg_pos):
+        """
+        Build waypoint sequence for one nut-to-peg assembly.
+
+        Args:
+            nut_pos: 3D position of the nut
+            peg_pos: 3D position of the target peg
+
+        Returns:
+            List of 7 waypoints for the assembly sequence
+        """
+        hover_offset = np.array([0, 0, self.HOVER_HEIGHT])
+        grasp_offset = np.array([0, 0, self.GRASP_OFFSET_Z])
+        peg_hover_offset = np.array([0, 0, self.PEG_HOVER_HEIGHT])
+        peg_insert_offset = np.array([0, 0, self.PEG_INSERT_HEIGHT])
+
+        return [
+            nut_pos + hover_offset,           # HOVER_NUT
+            nut_pos + grasp_offset,           # DESCEND_NUT
+            nut_pos + grasp_offset,           # GRASP_WAIT
+            nut_pos + hover_offset,           # LIFT_NUT
+            peg_pos + peg_hover_offset,       # MOVE_TO_PEG
+            peg_pos + peg_insert_offset,      # INSERT_PEG
+            peg_pos + peg_insert_offset,      # RELEASE_WAIT
+        ]
 
     def get_action(self, obs):
         """
+        Compute action for current timestep.
+
+        Args:
+            obs (dict): Current observation with robot state.
+
         Returns:
-            np.ndarray: 7D action (Delta-X, Delta-Y, Delta-Z, Axis-Angle [3], Gripper).
+            np.ndarray: 7D action [dx, dy, dz, ax, ay, az, gripper]
         """
-        pass
+        current_pos = np.array(obs['robot0_eef_pos'])
+        control = self.pid.update(current_pos, self.DT)
+        error = self.pid.get_error()
+
+        # Get threshold based on phase
+        threshold = self._get_threshold()
+
+        # Phase transition logic
+        if error < threshold:
+            if self._is_wait_phase():
+                self.wait_counter += 1
+                if self.wait_counter >= self.WAIT_STEPS:
+                    self._advance_phase()
+            else:
+                self._advance_phase()
+
+        # Build action
+        action = np.zeros(7)
+        action[0:3] = control          # Position control from PID
+        action[3:6] = 0                # No rotation control needed
+        action[6] = self._get_gripper_state()
+
+        return action
+
+    def _advance_phase(self):
+        """Move to next phase and reset PID controller."""
+        if self.phase < len(self.waypoints) - 1:
+            self.phase += 1
+            self.pid.reset(target=self.waypoints[self.phase])
+            self.wait_counter = 0
+
+    def _is_wait_phase(self):
+        """Check if current phase requires waiting for gripper."""
+        # Wait phases: 2 (grasp sq), 6 (release sq), 9 (grasp rd), 13 (release rd)
+        return self.phase in [2, 6, 9, 13]
+
+    def _get_threshold(self):
+        """Get adaptive threshold based on current phase."""
+        # Looser threshold for insertion phases due to physical constraints
+        if self.phase in [5, 6, 12, 13]:
+            return self.THRESHOLD_LOOSE
+        return self.THRESHOLD_TIGHT
+
+    def _get_gripper_state(self):
+        """
+        Determine gripper state based on current phase.
+
+        Gripper Logic:
+        - Phases 0-1:   OPEN (approaching square nut)
+        - Phases 2-5:   CLOSED (grasping and placing square nut)
+        - Phases 6-8:   OPEN (releasing square, approaching round nut)
+        - Phases 9-12:  CLOSED (grasping and placing round nut)
+        - Phase 13:     OPEN (releasing round nut)
+        """
+        if self.phase < 2:
+            return self.GRIPPER_OPEN
+        elif self.phase < 6:
+            return self.GRIPPER_CLOSE
+        elif self.phase < 9:
+            return self.GRIPPER_OPEN
+        elif self.phase < 13:
+            return self.GRIPPER_CLOSE
+        else:
+            return self.GRIPPER_OPEN
 
 
 class DoorPolicy(object):
@@ -218,7 +378,8 @@ class DoorPolicy(object):
     THRESHOLD = 0.05
     ORIENT_STEPS = 45  # 45 steps for ~90 degrees rotation
     WAIT_STEPS = 30
-    ROTATE_STEPS = 180  # More rotation to reach ~1.57 radians
+    ROTATE_STEPS = 600  # Max steps, but may transition earlier based on handle position
+    HANDLE_THRESHOLD = 1.4  # Transition to pull when handle reaches this angle
 
     GRIPPER_OPEN = -1
     GRIPPER_CLOSE = 1
@@ -226,12 +387,12 @@ class DoorPolicy(object):
     # Offsets discovered through experimentation
     APPROACH_OFFSET = np.array([0.12, 0.0, 0.07])
     GRIP_OFFSET = np.array([0.0, -0.02, -0.02])  # Y=-0.02 to center grip on handle
-    PULL_OFFSET = 0.10  # Reduced from 0.25 for gentler pull
+    PULL_FORCE = 0.4  # Constant force to pull door open
 
     # Rotation parameters
     # X-axis rotation (action[3]) - rotates gripper 90 degrees
     ORIENT_ROTATION = np.array([-0.3, 0.0, 0.0])  # Rotate around X-axis
-    HANDLE_ROTATION = np.array([0.0, -0.3, 0.0])  # Stronger rotation to unlatch door
+    HANDLE_ROTATION = np.array([0.0, -0.15, 0.0])  # Moderate rotation for handle
 
     def __init__(self, obs):
         """
@@ -249,7 +410,7 @@ class DoorPolicy(object):
         self.initial_handle_pos = handle_pos.copy()
         self.initial_eef_pos = eef_pos.copy()
 
-        # Pull direction will be calculated AFTER rotation phase
+        # Pull direction will be set AFTER rotation phase
         self.pull_direction = None
 
         # State machine
@@ -342,26 +503,34 @@ class DoorPolicy(object):
             action[3:6] = self.HANDLE_ROTATION
             action[6] = self.GRIPPER_CLOSE
 
+            # Get handle rotation angle
+            handle_qpos = obs.get('handle_qpos', 0)
+            if hasattr(handle_qpos, '__len__'):
+                handle_qpos = handle_qpos[0]
+
             self.step_counter += 1
-            if self.step_counter >= self.ROTATE_STEPS:
-                # Calculate pull direction NOW (after rotation)
-                self.pull_direction = self.initial_eef_pos - handle_pos
-                self.pull_direction[2] = 0  # Keep horizontal
-                magnitude = np.linalg.norm(self.pull_direction)
-                if magnitude > 0.01:
-                    self.pull_direction = self.pull_direction / magnitude
+            # Transition to pull when handle rotated enough OR max steps reached
+            if handle_qpos >= self.HANDLE_THRESHOLD or self.step_counter >= self.ROTATE_STEPS:
+                # Pull in +Y direction (toward robot)
+                # Door hinge is on the left, pulling +Y swings door open
+                self.pull_direction = np.array([0.0, 1.0, 0.0])
 
                 self.phase = 5
                 self.step_counter = 0
             return action
 
-        elif self.phase == 5:  # PULL
-            # Dynamic target: follow handle with offset in pull direction
-            target = handle_pos + self.GRIP_OFFSET + self.pull_direction * self.PULL_OFFSET
+        elif self.phase == 5:  # PULL door open
+            # Track handle position to maintain grip
+            target = handle_pos + self.GRIP_OFFSET
             self.pid.reset(target=target)
             control = self.pid.update(current_pos, self.DT)
 
-            action[0:3] = control
+            # Add constant pull force to swing door open
+            pull_force = self.pull_direction * self.PULL_FORCE
+
+            action[0:3] = control + pull_force
+            # Continue rotating to prevent handle from springing back
+            action[3:6] = self.HANDLE_ROTATION
             action[6] = self.GRIPPER_CLOSE
             return action
 
