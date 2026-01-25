@@ -218,7 +218,7 @@ class DoorPolicy(object):
     THRESHOLD = 0.05
     ORIENT_STEPS = 45  # 45 steps for ~90 degrees rotation
     WAIT_STEPS = 30
-    ROTATE_STEPS = 60
+    ROTATE_STEPS = 180  # More rotation to reach ~1.57 radians
 
     GRIPPER_OPEN = -1
     GRIPPER_CLOSE = 1
@@ -231,7 +231,7 @@ class DoorPolicy(object):
     # Rotation parameters
     # X-axis rotation (action[3]) - rotates gripper 90 degrees
     ORIENT_ROTATION = np.array([-0.3, 0.0, 0.0])  # Rotate around X-axis
-    HANDLE_ROTATION = np.array([0.0, -0.1, 0.0])  # Y command to turn handle (pitch)
+    HANDLE_ROTATION = np.array([0.0, -0.3, 0.0])  # Stronger rotation to unlatch door
 
     def __init__(self, obs):
         """
