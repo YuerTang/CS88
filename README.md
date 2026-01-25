@@ -1,2 +1,2 @@
-# CS88
+# CS188
 Robotics Project
