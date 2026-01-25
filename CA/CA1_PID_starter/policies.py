@@ -198,11 +198,16 @@ class DoorPolicy(object):
     """
     Policy for the Door Opening task.
 
+    [AI Declaration]: Generated using Claude with the prompt:
+    "Fix DoorPolicy to rotate gripper 90 degrees, reach handle, rotate handle, open door"
+
     Phase Sequence:
-        0: APPROACH     - Move to offset position above/beside handle (gripper open)
-        1: REACH        - Move to handle grip position (gripper open)
-        2: GRIP_WAIT    - Close gripper and wait for grip
-        3: PULL         - Pull toward fixed target to open door
+        0: ORIENT       - Rotate gripper 90 degrees (roll) so fingers can wrap handle
+        1: APPROACH     - Move to offset position near handle (gripper open)
+        2: REACH        - Move to handle grip position (gripper open)
+        3: GRIP         - Close gripper and wait for secure grip
+        4: ROTATE       - Rotate handle to unlatch door
+        5: PULL         - Pull door open while tracking handle
     """
 
     KP = 3.0
@@ -211,15 +216,22 @@ class DoorPolicy(object):
     DT = 0.05
 
     THRESHOLD = 0.05
+    ORIENT_STEPS = 45  # 45 steps for ~90 degrees rotation
     WAIT_STEPS = 30
+    ROTATE_STEPS = 60
 
     GRIPPER_OPEN = -1
     GRIPPER_CLOSE = 1
 
     # Offsets discovered through experimentation
-    APPROACH_OFFSET = np.array([0.13, 0.0, 0.07])
-    GRIP_OFFSET = np.array([0.0, 0.0, -0.02])
-    PULL_DISTANCE = 0.5
+    APPROACH_OFFSET = np.array([0.12, 0.0, 0.07])
+    GRIP_OFFSET = np.array([0.0, -0.02, -0.02])  # Y=-0.02 to center grip on handle
+    PULL_OFFSET = 0.10  # Reduced from 0.25 for gentler pull
+
+    # Rotation parameters
+    # X-axis rotation (action[3]) - rotates gripper 90 degrees
+    ORIENT_ROTATION = np.array([-0.3, 0.0, 0.0])  # Rotate around X-axis
+    HANDLE_ROTATION = np.array([0.0, -0.1, 0.0])  # Y command to turn handle (pitch)
 
     def __init__(self, obs):
         """
@@ -233,31 +245,23 @@ class DoorPolicy(object):
         handle_pos = np.array(obs['handle_pos'])
         eef_pos = np.array(obs['robot0_eef_pos'])
 
-        # Calculate pull direction (from handle toward robot, in XY plane)
-        pull_direction = eef_pos - handle_pos
-        pull_direction[2] = 0  # Keep Z level
-        pull_direction = pull_direction / np.linalg.norm(pull_direction)
-        self.pull_direction = pull_direction
-
-        # Store initial handle position for approach waypoint
+        # Store initial positions
         self.initial_handle_pos = handle_pos.copy()
+        self.initial_eef_pos = eef_pos.copy()
 
-        # Waypoints (some are dynamic, computed in get_action)
-        self.approach_target = handle_pos + self.APPROACH_OFFSET
-
-        # Pull target will be set when entering pull phase
-        self.pull_target = None
+        # Pull direction will be calculated AFTER rotation phase
+        self.pull_direction = None
 
         # State machine
         self.phase = 0
-        self.wait_counter = 0
+        self.step_counter = 0
 
-        # Initialize PID controller
+        # Initialize PID controller (target set per phase)
         self.pid = PID(
             kp=self.KP,
             ki=self.KI,
             kd=self.KD,
-            target=self.approach_target
+            target=eef_pos  # Start at current position for ORIENT phase
         )
 
     def get_action(self, obs):
@@ -273,58 +277,92 @@ class DoorPolicy(object):
         current_pos = np.array(obs['robot0_eef_pos'])
         handle_pos = np.array(obs['handle_pos'])
 
-        # Determine target and gripper state based on phase
-        if self.phase == 0:  # APPROACH
-            target = self.approach_target
-            gripper = self.GRIPPER_OPEN
-
-        elif self.phase == 1:  # REACH (with grip offset)
-            target = handle_pos + self.GRIP_OFFSET
-            gripper = self.GRIPPER_OPEN
-
-        elif self.phase == 2:  # GRIP_WAIT
-            target = handle_pos + self.GRIP_OFFSET
-            gripper = self.GRIPPER_CLOSE
-
-        elif self.phase == 3:  # PULL
-            target = self.pull_target  # Fixed target!
-            gripper = self.GRIPPER_CLOSE
-
-        else:
-            # Stay at pull target if somehow past phase 3
-            target = self.pull_target if self.pull_target is not None else current_pos
-            gripper = self.GRIPPER_CLOSE
-
-        # Update PID target if changed
-        self.pid.reset(target=target)
-
-        # Compute control signal
-        control = self.pid.update(current_pos, self.DT)
-        error = self.pid.get_error()
-
-        # Check phase transitions
-        if error < self.THRESHOLD:
-            if self.phase == 0:
-                self._advance_phase()
-            elif self.phase == 1:
-                self._advance_phase()
-            elif self.phase == 2:
-                self.wait_counter += 1
-                if self.wait_counter >= self.WAIT_STEPS:
-                    # Set fixed pull target before advancing
-                    self.pull_target = current_pos + self.pull_direction * self.PULL_DISTANCE
-                    self._advance_phase()
-            # Phase 3: keep pulling, no transition needed
-
-        # Build action vector
         action = np.zeros(7)
-        action[0:3] = control
-        action[3:6] = 0  # No rotation control needed
-        action[6] = gripper
+
+        if self.phase == 0:  # ORIENT - rotate gripper 90 degrees (pitch down)
+            # Use PID to maintain position while rotating
+            self.pid.reset(target=self.initial_eef_pos)
+            control = self.pid.update(current_pos, self.DT)
+            action[0:3] = control  # Maintain position
+            action[3:6] = self.ORIENT_ROTATION  # Apply rotation
+            action[6] = self.GRIPPER_OPEN
+            self.step_counter += 1
+            if self.step_counter >= self.ORIENT_STEPS:
+                self.phase = 1
+                self.step_counter = 0
+            return action
+
+        elif self.phase == 1:  # APPROACH
+            target = self.initial_handle_pos + self.APPROACH_OFFSET
+            self.pid.reset(target=target)
+            control = self.pid.update(current_pos, self.DT)
+            error = self.pid.get_error()
+
+            action[0:3] = control
+            action[6] = self.GRIPPER_OPEN
+
+            if error < self.THRESHOLD:
+                self.phase = 2
+            return action
+
+        elif self.phase == 2:  # REACH
+            target = handle_pos + self.GRIP_OFFSET
+            self.pid.reset(target=target)
+            control = self.pid.update(current_pos, self.DT)
+            error = self.pid.get_error()
+
+            action[0:3] = control
+            action[6] = self.GRIPPER_OPEN
+
+            if error < self.THRESHOLD:
+                self.phase = 3
+                self.step_counter = 0
+            return action
+
+        elif self.phase == 3:  # GRIP
+            target = handle_pos + self.GRIP_OFFSET
+            self.pid.reset(target=target)
+            control = self.pid.update(current_pos, self.DT)
+
+            action[0:3] = control
+            action[6] = self.GRIPPER_CLOSE
+
+            self.step_counter += 1
+            if self.step_counter >= self.WAIT_STEPS:
+                self.phase = 4
+                self.step_counter = 0
+            return action
+
+        elif self.phase == 4:  # ROTATE handle
+            target = handle_pos + self.GRIP_OFFSET
+            self.pid.reset(target=target)
+            control = self.pid.update(current_pos, self.DT)
+
+            action[0:3] = control
+            action[3:6] = self.HANDLE_ROTATION
+            action[6] = self.GRIPPER_CLOSE
+
+            self.step_counter += 1
+            if self.step_counter >= self.ROTATE_STEPS:
+                # Calculate pull direction NOW (after rotation)
+                self.pull_direction = self.initial_eef_pos - handle_pos
+                self.pull_direction[2] = 0  # Keep horizontal
+                magnitude = np.linalg.norm(self.pull_direction)
+                if magnitude > 0.01:
+                    self.pull_direction = self.pull_direction / magnitude
+
+                self.phase = 5
+                self.step_counter = 0
+            return action
+
+        elif self.phase == 5:  # PULL
+            # Dynamic target: follow handle with offset in pull direction
+            target = handle_pos + self.GRIP_OFFSET + self.pull_direction * self.PULL_OFFSET
+            self.pid.reset(target=target)
+            control = self.pid.update(current_pos, self.DT)
+
+            action[0:3] = control
+            action[6] = self.GRIPPER_CLOSE
+            return action
 
         return action
-
-    def _advance_phase(self):
-        """Move to next phase."""
-        self.phase += 1
-        self.wait_counter = 0
