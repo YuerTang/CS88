@@ -206,21 +206,22 @@ class NutAssemblyPolicy(object):
 
     # Height parameters
     HOVER_HEIGHT = 0.08       # Height above nut to hover (same as StackPolicy)
-    GRASP_OFFSET_Z = 0.0      # Grasp at nut level (can't go lower - table in the way)
+    GRASP_OFFSET_Z = -0.01    # Grasp 1cm below nut center (accounts for EEF-to-finger offset)
     HANDLE_OFFSET_SQUARE = 0.054  # From square-nut.xml: handle_site pos="0.054 0 0"
-    HANDLE_OFFSET_ROUND = 0.06    # From round-nut.xml: handle_site pos="0.06 0 0" (graspable part)
-    APPROACH_EXTRA = 0.03     # Extra distance beyond handle for approach (avoid collision)
+    HANDLE_OFFSET_ROUND = 0.06    # From round-nut.xml: handle_site pos="0.06 0 0"
+    APPROACH_EXTRA = 0.03         # Extra distance beyond handle for approach
     PEG_HOVER_HEIGHT = 0.15   # Height above peg for clearance (higher to avoid collision)
-    PEG_INSERT_HEIGHT = 0.04  # Height above peg base to release
+    PEG_INSERT_HEIGHT = 0.0   # Height at peg base to release (lowered for proper insertion)
 
     # Thresholds
-    THRESHOLD_TIGHT = 0.008   # For precise positioning - must be very close!
+    THRESHOLD_TIGHT = 0.02    # For precise positioning (2cm - relaxed to allow convergence)
     THRESHOLD_LOOSE = 0.06    # For movement phases (allow physical constraint tolerance)
-    WAIT_STEPS = 60           # Steps to wait for gripper actuation (more time to close)
+    WAIT_STEPS = 90           # Steps to wait for gripper actuation (increased for secure grip)
 
     # Yaw rotation control (to align gripper with handle direction)
     YAW_GAIN = 0.2            # Proportional gain for yaw rotation (using relative quaternion method)
     ALIGN_GAIN = 0.3          # Proportional gain for aligning nut with peg
+    YAW_ALIGNED_THRESHOLD = 0.3  # Yaw must be within this (radians) to proceed from hover
 
     # Gripper states
     GRIPPER_OPEN = -1
@@ -270,6 +271,14 @@ class NutAssemblyPolicy(object):
         # State machine
         self.phase = 0
         self.wait_counter = 0
+
+        # Track chosen flip direction for each nut (decided once, used consistently)
+        self.sq_flip_180 = None  # Will be set on first hover
+        self.rd_flip_180 = None
+
+        # Track whether grasp target has been set (only set once per grasp phase)
+        self.sq_grasp_target_set = False
+        self.rd_grasp_target_set = False
 
         # Initialize PID controller
         self.pid = PID(
@@ -355,9 +364,10 @@ class NutAssemblyPolicy(object):
         """
         current_pos = np.array(obs['robot0_eef_pos'])
 
-        # DYNAMIC TARGET UPDATE: For approach/grasp phases, track current nut position
+        # DYNAMIC TARGET UPDATE: For approach phases, track current nut position
         # and rotation because nut may have moved/settled since init
-        if self.phase in [0, 1, 2, 3]:  # Square nut approach/grasp phases
+        # NOTE: Don't reset PID during WAIT phases (3, 11) - need stable hold position
+        if self.phase in [0, 1, 2]:  # Square nut approach phases (NOT grasp wait)
             current_nut = np.array(obs['SquareNut_pos'])
             nut_quat = obs['SquareNut_quat']
             # Compute handle offset and target yaw based on CURRENT rotation
@@ -373,19 +383,28 @@ class NutAssemblyPolicy(object):
                 target = current_nut + np.array([0, 0, self.HOVER_HEIGHT]) + self.sq_handle_offset + approach_offset
             elif self.phase == 1:  # DESCEND_OUTSIDE - outside + low
                 target = current_nut + np.array([0, 0, self.GRASP_OFFSET_Z]) + self.sq_handle_offset + approach_offset
-            else:  # Phase 2, 3: MOVE_TO_HANDLE / GRASP_WAIT - at handle + low
+            else:  # Phase 2: MOVE_TO_HANDLE - at handle + low
                 target = current_nut + np.array([0, 0, self.GRASP_OFFSET_Z]) + self.sq_handle_offset
             self.pid.reset(target=target)
 
-            # DEBUG - show gripper position, target, and error distance
-            error_dist = np.linalg.norm(target - current_pos)
-            print(f"Phase {self.phase}: gripper={current_pos}, target={target}, error={error_dist:.4f} (need <{self._get_threshold()})")
+        elif self.phase == 3:  # Square nut GRASP_WAIT - hold position for grasp
+            # Set grasp target ONCE when entering this phase, then hold steady
+            if not self.sq_grasp_target_set:
+                current_nut = np.array(obs['SquareNut_pos'])
+                nut_quat = obs['SquareNut_quat']
+                self.sq_handle_offset, _ = self._get_handle_offset_and_yaw(
+                    nut_quat, self.HANDLE_OFFSET_SQUARE
+                )
+                # Target = current nut position + grasp offset + handle offset
+                target = current_nut + np.array([0, 0, self.GRASP_OFFSET_Z]) + self.sq_handle_offset
+                self.pid.reset(target=target)
+                self.sq_grasp_target_set = True
 
-            # When we grasp (phase 3), update lift+peg waypoints with final handle offset
-            if self.phase == 3:
+                # Update waypoints for lift+peg phases with current handle offset
                 self._update_waypoints_square(obs)
+            # After target is set, PID holds position without reset (allows convergence)
 
-        elif self.phase in [8, 9, 10, 11]:  # Round nut approach/grasp phases
+        elif self.phase in [8, 9, 10]:  # Round nut approach phases (NOT grasp wait)
             current_nut = np.array(obs['RoundNut_pos'])
             nut_quat = obs['RoundNut_quat']
             # Compute handle offset and target yaw based on CURRENT rotation
@@ -401,13 +420,26 @@ class NutAssemblyPolicy(object):
                 target = current_nut + np.array([0, 0, self.HOVER_HEIGHT]) + self.rd_handle_offset + approach_offset
             elif self.phase == 9:  # DESCEND_OUTSIDE - outside + low
                 target = current_nut + np.array([0, 0, self.GRASP_OFFSET_Z]) + self.rd_handle_offset + approach_offset
-            else:  # Phase 10, 11: MOVE_TO_HANDLE / GRASP_WAIT - at handle + low
+            else:  # Phase 10: MOVE_TO_HANDLE - at handle + low
                 target = current_nut + np.array([0, 0, self.GRASP_OFFSET_Z]) + self.rd_handle_offset
             self.pid.reset(target=target)
 
-            # When we grasp (phase 11), update lift+peg waypoints with final handle offset
-            if self.phase == 11:
+        elif self.phase == 11:  # Round nut GRASP_WAIT - hold position for grasp
+            # Set grasp target ONCE when entering this phase, then hold steady
+            if not self.rd_grasp_target_set:
+                current_nut = np.array(obs['RoundNut_pos'])
+                nut_quat = obs['RoundNut_quat']
+                self.rd_handle_offset, _ = self._get_handle_offset_and_yaw(
+                    nut_quat, self.HANDLE_OFFSET_ROUND
+                )
+                # Target = current nut position + grasp offset + handle offset
+                target = current_nut + np.array([0, 0, self.GRASP_OFFSET_Z]) + self.rd_handle_offset
+                self.pid.reset(target=target)
+                self.rd_grasp_target_set = True
+
+                # Update waypoints for lift+peg phases with current handle offset
                 self._update_waypoints_round(obs)
+            # After target is set, PID holds position without reset (allows convergence)
 
         # Phases 4-7 and 12-15: Use FIXED waypoints (nut moves with gripper)
 
@@ -418,6 +450,8 @@ class NutAssemblyPolicy(object):
         threshold = self._get_threshold()
 
         # Phase transition logic
+        # FIX OPTION C: Removed yaw alignment requirement from hover phases (0, 8)
+        # The gripper will still rotate during hover, but won't block if not aligned
         if error < threshold:
             if self._is_wait_phase():
                 self.wait_counter += 1
@@ -431,28 +465,31 @@ class NutAssemblyPolicy(object):
         action[0:3] = control          # Position control from PID
         action[6] = self._get_gripper_state()
 
-        # Apply yaw rotation during approach phases to align gripper with handle
-        # Use relative quaternion from nut to gripper - directly encodes the yaw error
-        if self.phase in [0, 1, 2]:  # Square nut hover/descend/move-to-handle
-            rel_quat = obs['SquareNut_to_robot0_eef_quat']
-            if np.sum(np.abs(rel_quat)) > 0:  # Check quaternion is valid
-                yaw_error = R.from_quat(rel_quat).as_euler('xyz')[2]
+        # FIX OPTION B: Proper yaw rotation with normalized angles
+        # The gripper must align with the handle to successfully grasp
+        # Use atan2(sin, cos) normalization to avoid wrap-around oscillation
+        if self.phase in [0, 1]:  # Square nut HOVER / DESCEND - align with handle
+            rel_quat = obs.get('SquareNut_to_robot0_eef_quat', None)
+            if rel_quat is not None and np.sum(np.abs(rel_quat)) > 0:
+                raw_yaw = R.from_quat(rel_quat).as_euler('xyz')[2]
+                # Normalize to [-π, π] to avoid wrap-around
+                yaw_error = np.arctan2(np.sin(raw_yaw), np.cos(raw_yaw))
                 action[5] = self.YAW_GAIN * yaw_error
-        elif self.phase in [8, 9, 10]:  # Round nut hover/descend/move-to-handle
-            rel_quat = obs['RoundNut_to_robot0_eef_quat']
-            if np.sum(np.abs(rel_quat)) > 0:  # Check quaternion is valid
-                yaw_error = R.from_quat(rel_quat).as_euler('xyz')[2]
+        elif self.phase in [8, 9]:  # Round nut HOVER / DESCEND - align with handle
+            rel_quat = obs.get('RoundNut_to_robot0_eef_quat', None)
+            if rel_quat is not None and np.sum(np.abs(rel_quat)) > 0:
+                raw_yaw = R.from_quat(rel_quat).as_euler('xyz')[2]
+                # Normalize to [-π, π]
+                yaw_error = np.arctan2(np.sin(raw_yaw), np.cos(raw_yaw))
                 action[5] = self.YAW_GAIN * yaw_error
         elif self.phase in [5, 6]:  # Square nut MOVE_TO_PEG / INSERT - align nut with peg
-            # Get current nut yaw from its quaternion
             nut_quat = obs['SquareNut_quat']
             nut_yaw = R.from_quat(nut_quat).as_euler('xyz')[2]
             # Snap to nearest 90° alignment (0, π/2, π, -π/2)
             nearest_aligned = round(nut_yaw / (np.pi / 2)) * (np.pi / 2)
-            # Compute error and apply rotation
             yaw_error = nearest_aligned - nut_yaw
+            yaw_error = np.arctan2(np.sin(yaw_error), np.cos(yaw_error))  # Normalize
             action[5] = self.ALIGN_GAIN * yaw_error
-        # Other phases: no rotation (action[3:6] already 0)
 
         return action
 
