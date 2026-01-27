@@ -1,17 +1,12 @@
 import numpy as np
-from pid import PID
+from pid import PID, RotationPID
 from scipy.spatial.transform import Rotation as R
 
 class StackPolicy(object):
     """
-    Claude assists me to write this low-level code.
-    Policy for the Block Stacking task.
-
-    This policy uses a STATE MACHINE approach:
-    - We define a sequence of PHASES (states)
-    - Each phase has a TARGET POSITION (waypoint) and GRIPPER STATE
-    - We use PID control to smoothly move toward each waypoint
-    - When we reach a waypoint (error < threshold), we transition to the next phase
+    [Short Description]: 8-phase state machine policy for pick-and-place cube stacking.
+    [AI Declaration]: Generated using Claude (claude-opus-4-5-20251101) with the prompt:
+    "Implement StackPolicy state machine for pick and place cube stacking with adaptive thresholds"
 
     Phase Sequence:
         0: HOVER_ABOVE_A  - Move above Cube A (gripper open)
@@ -22,6 +17,9 @@ class StackPolicy(object):
         5: DESCEND_TO_B   - Lower onto Cube B (gripper closed)
         6: RELEASE_WAIT   - Stay at Cube B, wait for gripper to open
         7: RETRACT        - Move up to clear block (gripper open)
+
+    Notes:
+        Adaptive thresholds: TIGHT (1.5cm) for phases 0-4, LOOSE (3cm) for phases 5-7.
     """
 
     KP = 3.0   # Proportional: higher = faster but may overshoot
@@ -43,13 +41,18 @@ class StackPolicy(object):
 
     def __init__(self, obs):
         """
-        Called ONCE at the start of each episode.
+        [Short Description]: Initialize policy with waypoints from cube positions.
+        [AI Declaration]: Generated using Claude (claude-opus-4-5-20251101) with the prompt:
+        "Set up waypoints for 8-phase state machine based on cube A and B positions"
 
         Args:
-            obs (dict): Initial observation containing object positions.
-                - obs['cubeA_pos']: [x, y, z] position of Cube A (to pick up)
-                - obs['cubeB_pos']: [x, y, z] position of Cube B (to stack on)
-                - obs['robot0_eef_pos']: [x, y, z] robot end-effector position
+            obs (dict): Initial observation with cubeA_pos, cubeB_pos, robot0_eef_pos.
+
+        Returns:
+            None
+
+        Notes:
+            RETRACT phase added to separate gripper from block after release.
         """
 
         cube_a_pos = np.array(obs['cubeA_pos']) 
@@ -82,23 +85,18 @@ class StackPolicy(object):
 
     def get_action(self, obs):
         """
-        Claude assists me to write this low-level code.
-        Called EVERY TIMESTEP during the episode.
-
-        This function:
-        1. Gets current robot position
-        2. Uses PID to compute control signal toward current waypoint
-        3. Checks if we should transition to the next phase
-        4. Builds and returns the 7D action vector
+        [Short Description]: Compute 7D action with PID control and phase transitions.
+        [AI Declaration]: Generated using Claude (claude-opus-4-5-20251101) with the prompt:
+        "Implement get_action with PID control, phase transitions, and gripper logic"
 
         Args:
             obs (dict): Current observation with robot and object states.
 
         Returns:
-            np.ndarray: 7D action vector [dx, dy, dz, ax, ay, az, gripper]
-                - [0:3] Position delta from PID controller
-                - [3:6] Rotation delta (we use zeros - no rotation control)
-                - [6]   Gripper command (-1=open, +1=close)
+            np.ndarray: 7D action [dx, dy, dz, ax, ay, az, gripper].
+
+        Notes:
+            Wait phases (2, 6) require WAIT_STEPS before advancing.
         """
         current_pos = np.array(obs['robot0_eef_pos'])
         control = self.pid.update(current_pos, self.DT)
@@ -129,12 +127,18 @@ class StackPolicy(object):
 
     def _advance_phase(self):
         """
-        Move to the next phase in the state machine.
+        [Short Description]: Advance to next phase and reset PID controller.
+        [AI Declaration]: Generated using Claude (claude-opus-4-5-20251101) with the prompt:
+        "Implement phase transition with PID reset for new waypoint target"
 
-        This function:
-        1. Increments the phase counter
-        2. Resets the PID controller with the new target waypoint
-        3. Resets the wait counter
+        Args:
+            None
+
+        Returns:
+            None
+
+        Notes:
+            PID reset clears integral/derivative error for clean transitions.
         """
         if self.phase < len(self.waypoints) - 1:
             self.phase += 1
@@ -143,11 +147,18 @@ class StackPolicy(object):
 
     def _get_threshold(self):
         """
-        Get adaptive threshold based on current phase.
+        [Short Description]: Get adaptive threshold based on current phase.
+        [AI Declaration]: Generated using Claude (claude-opus-4-5-20251101) with the prompt:
+        "Add adaptive thresholds - tight for grasping, loose for stacking phases"
 
-        Phases 0-4 (free-space motion): Use tight threshold for precision grasping.
-        Phases 5-7 (stacking): Use loose threshold due to physical constraints
-                               when placing block on top of another.
+        Args:
+            None
+
+        Returns:
+            float: Position error threshold in meters.
+
+        Notes:
+            TIGHT (1.5cm) for phases 0-4, LOOSE (3cm) for phases 5-7.
         """
         if self.phase <= 4:
             return self.THRESHOLD_TIGHT
@@ -156,15 +167,18 @@ class StackPolicy(object):
 
     def _get_gripper_state(self):
         """
-        Determine gripper state based on current phase.
+        [Short Description]: Determine gripper command based on current phase.
+        [AI Declaration]: Generated using Claude (claude-opus-4-5-20251101) with the prompt:
+        "Map phases to gripper states for pick and place sequence"
 
-        Gripper Logic:
-        - Phases 0-1: OPEN (approaching cube A)
-        - Phases 2-5: CLOSED (grasping and carrying cube A)
-        - Phases 6-7: OPEN (releasing and retracting)
+        Args:
+            None
 
         Returns:
-            float: -1 for open, +1 for closed
+            float: -1 (open) or +1 (close).
+
+        Notes:
+            OPEN: 0-1, 6-7. CLOSE: 2-5.
         """
         if self.phase < 2:
 
@@ -176,31 +190,36 @@ class StackPolicy(object):
 
 class NutAssemblyPolicy(object):
     """
-    Policy for the Nut Assembly task.
-
-    [AI Declaration]: Generated using Claude with the prompt:
-    "Implement NutAssemblyPolicy to fit square nut on square peg and round nut on round peg"
+    [Short Description]: 19-phase state machine policy for assembling two nuts onto pegs.
+    [AI Declaration]: Generated using Claude (claude-opus-4-5-20251101) with the prompt:
+    "Implement NutAssemblyPolicy with PID for position control and RotationPID for yaw control"
 
     Goal: Fit square nut on square peg and round nut on round peg.
 
-    This policy uses a STATE MACHINE approach with 16 phases:
-    - Phases 0-7: Pick up square nut and place on square peg (peg1)
-    - Phases 8-15: Pick up round nut and place on round peg (peg2)
+    This policy uses a STATE MACHINE approach with 19 phases:
+    - Phases 0-8: Pick up round nut, align, and place on round peg (peg2)
+    - Phase 9: TRANSITION_WAIT - Wait between the two tasks
+    - Phases 10-18: Pick up square nut, align, and place on square peg (peg1)
 
     Phase Sequence (repeated for each nut):
-        0/8:  HOVER_ABOVE      - Move above nut, outside radius (gripper open)
-        1/9:  DESCEND_OUTSIDE  - Lower while staying outside radius (gripper open)
-        2/10: MOVE_TO_HANDLE   - Move inward to handle position (gripper open)
-        3/11: GRASP_WAIT       - Wait for gripper to close
-        4/12: LIFT_NUT         - Lift nut up (gripper closed)
-        5/13: MOVE_TO_PEG      - Move above target peg (gripper closed)
-        6/14: INSERT_PEG       - Lower nut onto peg (gripper closed)
-        7/15: RELEASE_WAIT     - Wait for gripper to open
+        0/10:  HOVER_ABOVE      - Move above nut, outside radius (gripper open)
+        1/11:  DESCEND_OUTSIDE  - Lower while staying outside radius (gripper open)
+        2/12:  MOVE_TO_HANDLE   - Move inward to handle position (gripper open)
+        3/13:  GRASP_WAIT       - Wait for gripper to close
+        4/14:  LIFT_NUT         - Lift nut up (gripper closed)
+        5/15:  ROTATE_ALIGN     - Rotate so handle points toward robot (gripper closed)
+        6/16:  MOVE_TO_PEG      - Move above target peg in straight line (gripper closed)
+        7/17:  INSERT_PEG       - Lower nut onto peg (gripper closed)
+        8/18:  RELEASE_WAIT     - Wait for gripper to open
+
+    Notes:
+        Uses PID for position control (x,y,z) and RotationPID for yaw control.
+        RotationPID handles angle wrapping at ±π and provides smoother convergence.
     """
 
     # PID gains (same as StackPolicy)
     KP = 3.0
-    KI = 0.0
+    KI = 0.0  # Keep at 0 - using target update instead of reset for convergence
     KD = 0.2
     DT = 0.05
 
@@ -209,18 +228,31 @@ class NutAssemblyPolicy(object):
     GRASP_OFFSET_Z = -0.01    # Grasp 1cm below nut center (accounts for EEF-to-finger offset)
     HANDLE_OFFSET_SQUARE = 0.054  # From square-nut.xml: handle_site pos="0.054 0 0"
     HANDLE_OFFSET_ROUND = 0.06    # From round-nut.xml: handle_site pos="0.06 0 0"
-    APPROACH_EXTRA = 0.03         # Extra distance beyond handle for approach
-    PEG_HOVER_HEIGHT = 0.15   # Height above peg for clearance (higher to avoid collision)
+    APPROACH_EXTRA = 0.04         # Extra distance beyond handle for approach (increased to avoid collision)
+    PEG_HOVER_HEIGHT = 0.20   # Height above peg for clearance (increased to avoid nut-peg collision)
     PEG_INSERT_HEIGHT = 0.0   # Height at peg base to release (lowered for proper insertion)
 
     # Thresholds
-    THRESHOLD_TIGHT = 0.02    # For precise positioning (2cm - relaxed to allow convergence)
+    THRESHOLD_TIGHT = 0.025   # For precise positioning (2.5cm - balance between convergence and accuracy)
+    THRESHOLD_PEG = 0.01      # For peg alignment - must be smaller than clearance (1cm)
     THRESHOLD_LOOSE = 0.06    # For movement phases (allow physical constraint tolerance)
     WAIT_STEPS = 90           # Steps to wait for gripper actuation (increased for secure grip)
+    TRANSITION_WAIT_STEPS = 60  # Steps to wait between completing round nut and starting square nut
+    ROTATE_ALIGN_STEPS = 120  # Max steps to rotate (increased for safety)
+    ROTATE_ALIGN_MIN_STEPS = 30  # Minimum steps before checking yaw alignment
+    YAW_ALIGN_THRESHOLD = 0.1  # Yaw must be within ~5.7 degrees of target to proceed
 
-    # Yaw rotation control (to align gripper with handle direction)
-    YAW_GAIN = 0.2            # Proportional gain for yaw rotation (using relative quaternion method)
-    ALIGN_GAIN = 0.3          # Proportional gain for aligning nut with peg
+    # Target yaw for aligned handle
+    # Round nut: handle points TOWARD robot (+X from nut, so nut body is far, but gripper is close)
+    # We want yaw = 0 so handle is in +X direction from nut center
+    # BUT since peg is at X=0.23 and robot at X~0, we want gripper at X < 0.23
+    # So handle should be in -X direction from nut = yaw = π
+    ALIGNED_HANDLE_YAW = np.pi  # Handle points in -X direction (toward robot)
+
+    # Yaw rotation PID gains (for aligning gripper with handle direction)
+    YAW_KP = 1.0              # Proportional gain for yaw rotation
+    YAW_KI = 0.1              # Integral gain to eliminate steady-state error
+    YAW_KD = 0.05             # Derivative gain to dampen oscillations
     YAW_ALIGNED_THRESHOLD = 0.3  # Yaw must be within this (radians) to proceed from hover
 
     # Gripper states
@@ -233,15 +265,19 @@ class NutAssemblyPolicy(object):
 
     def __init__(self, obs):
         """
-        Initialize the NutAssembly policy.
+        [Short Description]: Initialize policy with PID controllers and waypoints from nut positions.
+        [AI Declaration]: Generated using Claude (claude-opus-4-5-20251101) with the prompt:
+        "Set up state machine with position PID and RotationPID for yaw control"
 
         Args:
-            obs (dict): Initial observation containing:
-                - obs['SquareNut_pos']: [x, y, z] position of square nut
-                - obs['SquareNut_quat']: [w, x, y, z] quaternion orientation
-                - obs['RoundNut_pos']: [x, y, z] position of round nut
-                - obs['RoundNut_quat']: [w, x, y, z] quaternion orientation
-                - obs['robot0_eef_pos']: [x, y, z] robot end-effector position
+            obs (dict): Initial observation containing nut positions, orientations, and robot state.
+
+        Returns:
+            None
+
+        Notes:
+            Initializes position PID, yaw_pid_approach (for gripper-handle alignment),
+            and yaw_pid_align (for rotating nut handle toward robot).
         """
         # Get nut positions and orientations (randomized each episode)
         square_nut_pos = np.array(obs['SquareNut_pos'])
@@ -260,13 +296,16 @@ class NutAssemblyPolicy(object):
 
         # Build waypoints (will be overridden by dynamic tracking for grasp phases)
         # For peg phases, we'll update waypoints when we know the actual grasp offset
-        waypoints_square = self._build_waypoints(
-            square_nut_pos, self.PEG1_POS, self.sq_handle_offset, self.HANDLE_OFFSET_SQUARE
-        )
+        # Order: Round nut first (phases 0-7), then transition wait (phase 8), then square nut (phases 9-16)
         waypoints_round = self._build_waypoints(
             round_nut_pos, self.PEG2_POS, self.rd_handle_offset, self.HANDLE_OFFSET_ROUND
         )
-        self.waypoints = waypoints_square + waypoints_round
+        waypoints_square = self._build_waypoints(
+            square_nut_pos, self.PEG1_POS, self.sq_handle_offset, self.HANDLE_OFFSET_SQUARE
+        )
+        # Transition waypoint (phase 8): hover above round peg after release
+        transition_waypoint = [self.PEG2_POS + np.array([0, 0, self.PEG_HOVER_HEIGHT])]
+        self.waypoints = waypoints_round + transition_waypoint + waypoints_square
 
         # State machine
         self.phase = 0
@@ -280,7 +319,7 @@ class NutAssemblyPolicy(object):
         self.sq_grasp_target_set = False
         self.rd_grasp_target_set = False
 
-        # Initialize PID controller
+        # Initialize PID controller for position
         self.pid = PID(
             kp=self.KP,
             ki=self.KI,
@@ -288,21 +327,37 @@ class NutAssemblyPolicy(object):
             target=self.waypoints[0]
         )
 
+        # Initialize RotationPID controllers for yaw control
+        # Approach PID: align gripper yaw with handle (target = 0, relative yaw)
+        self.yaw_pid_approach = RotationPID(
+            kp=self.YAW_KP,
+            ki=self.YAW_KI,
+            kd=self.YAW_KD,
+            target=0.0  # Target relative yaw = 0 (aligned with handle)
+        )
+        # Align PID: rotate nut so handle points toward robot (target = π, absolute yaw)
+        self.yaw_pid_align = RotationPID(
+            kp=self.YAW_KP,
+            ki=self.YAW_KI,
+            kd=self.YAW_KD,
+            target=self.ALIGNED_HANDLE_YAW  # Target = π (handle toward robot)
+        )
+
     def _get_handle_offset_and_yaw(self, nut_quat, handle_distance):
         """
-        Compute world-frame offset to nut handle and target yaw angle.
-
-        Uses 2D trigonometry since the nut only rotates around Z-axis (yaw).
-        The handle is at local position (handle_distance, 0, 0) in nut's frame.
+        [Short Description]: Compute world-frame handle offset and yaw angle from quaternion.
+        [AI Declaration]: Generated using Claude (claude-opus-4-5-20251101) with the prompt:
+        "Extract yaw from quaternion and compute 2D rotation of handle offset to world frame"
 
         Args:
-            nut_quat: Quaternion orientation of the nut [x, y, z, w]
-            handle_distance: Distance from nut center to handle (meters)
+            nut_quat (array): Quaternion orientation [x, y, z, w].
+            handle_distance (float): Distance from nut center to handle (meters).
 
         Returns:
-            tuple: (offset_array, theta)
-                - offset_array: 3D offset in world frame [x, y, 0]
-                - theta: Yaw angle of handle (radians)
+            tuple: (offset_array [x, y, 0], theta in radians)
+
+        Notes:
+            Uses θ = 2*atan2(z, w) for Z-axis rotation. MuJoCo uses [x,y,z,w] format.
         """
         # Extract yaw angle from quaternion
         # MuJoCo/robosuite uses [x, y, z, w] quaternion format (not [w, x, y, z])
@@ -321,16 +376,21 @@ class NutAssemblyPolicy(object):
 
     def _build_waypoints(self, nut_pos, peg_pos, handle_offset, handle_distance):
         """
-        Build waypoint sequence for one nut-to-peg assembly.
+        [Short Description]: Build 9-waypoint sequence for one nut-to-peg assembly.
+        [AI Declaration]: Generated using Claude (claude-opus-4-5-20251101) with the prompt:
+        "Design outside-in approach trajectory with approach_extra offset to avoid nut collision"
 
         Args:
-            nut_pos: 3D position of the nut
-            peg_pos: 3D position of the target peg
-            handle_offset: 3D offset to handle [x, y, 0] based on nut rotation
-            handle_distance: Distance from nut center to handle (for approach calc)
+            nut_pos (np.ndarray): 3D nut position [x, y, z].
+            peg_pos (np.ndarray): 3D peg position [x, y, z].
+            handle_offset (np.ndarray): Handle offset in world frame [x, y, 0].
+            handle_distance (float): Distance from nut center to handle (meters).
 
         Returns:
-            List of 8 waypoints for the assembly sequence
+            list: 9 waypoints for phases 0-8 or 10-18.
+
+        Notes:
+            APPROACH_EXTRA=0.04m beyond handle. Aligned offset assumes handle at -X after rotation.
         """
         hover_offset = np.array([0, 0, self.HOVER_HEIGHT])
         grasp_z_offset = np.array([0, 0, self.GRASP_OFFSET_Z])
@@ -341,70 +401,44 @@ class NutAssemblyPolicy(object):
         approach_direction = handle_offset / handle_distance  # unit vector
         approach_offset = approach_direction * self.APPROACH_EXTRA
 
+        # Aligned handle offset: handle pointing toward robot (-X direction)
+        aligned_handle_offset = np.array([-handle_distance, 0, 0])
+
         return [
             nut_pos + hover_offset + handle_offset + approach_offset,   # 0: HOVER_ABOVE (outside, high)
             nut_pos + grasp_z_offset + handle_offset + approach_offset, # 1: DESCEND_OUTSIDE (outside, low)
             nut_pos + grasp_z_offset + handle_offset,                   # 2: MOVE_TO_HANDLE (at handle, low)
             nut_pos + grasp_z_offset + handle_offset,                   # 3: GRASP_WAIT
             nut_pos + hover_offset + handle_offset,                     # 4: LIFT_NUT
-            peg_pos + peg_hover_offset + handle_offset,                 # 5: MOVE_TO_PEG
-            peg_pos + peg_insert_offset + handle_offset,                # 6: INSERT_PEG
-            peg_pos + peg_insert_offset + handle_offset,                # 7: RELEASE_WAIT
+            nut_pos + hover_offset + handle_offset,                     # 5: ROTATE_ALIGN (stay in place, rotate)
+            peg_pos + peg_hover_offset + aligned_handle_offset,         # 6: MOVE_TO_PEG (straight line)
+            peg_pos + peg_insert_offset + aligned_handle_offset,        # 7: INSERT_PEG
+            peg_pos + peg_insert_offset + aligned_handle_offset,        # 8: RELEASE_WAIT
         ]
 
     def get_action(self, obs):
         """
-        Compute action for current timestep.
+        [Short Description]: Compute 7D action using position PID and RotationPID for yaw control.
+        [AI Declaration]: Generated using Claude (claude-opus-4-5-20251101) with the prompt:
+        "Implement get_action with PID for position and RotationPID for smoother yaw convergence"
 
         Args:
-            obs (dict): Current observation with robot state.
+            obs (dict): Current observation with robot and nut states.
 
         Returns:
-            np.ndarray: 7D action [dx, dy, dz, ax, ay, az, gripper]
+            np.ndarray: 7D action [dx, dy, dz, ax, ay, az, gripper].
+
+        Notes:
+            yaw_pid_approach used for phases 0-2, 10-12 (gripper-handle alignment).
+            yaw_pid_align used for phases 4-7, 14-17 (rotate nut handle toward robot).
         """
         current_pos = np.array(obs['robot0_eef_pos'])
 
         # DYNAMIC TARGET UPDATE: For approach phases, track current nut position
         # and rotation because nut may have moved/settled since init
-        # NOTE: Don't reset PID during WAIT phases (3, 11) - need stable hold position
-        if self.phase in [0, 1, 2]:  # Square nut approach phases (NOT grasp wait)
-            current_nut = np.array(obs['SquareNut_pos'])
-            nut_quat = obs['SquareNut_quat']
-            # Compute handle offset and target yaw based on CURRENT rotation
-            self.sq_handle_offset, self.sq_target_yaw = self._get_handle_offset_and_yaw(
-                nut_quat, self.HANDLE_OFFSET_SQUARE
-            )
-
-            # Compute approach offset (radially outward)
-            approach_direction = self.sq_handle_offset / self.HANDLE_OFFSET_SQUARE  # unit vector
-            approach_offset = approach_direction * self.APPROACH_EXTRA
-
-            if self.phase == 0:  # HOVER_ABOVE - outside + high
-                target = current_nut + np.array([0, 0, self.HOVER_HEIGHT]) + self.sq_handle_offset + approach_offset
-            elif self.phase == 1:  # DESCEND_OUTSIDE - outside + low
-                target = current_nut + np.array([0, 0, self.GRASP_OFFSET_Z]) + self.sq_handle_offset + approach_offset
-            else:  # Phase 2: MOVE_TO_HANDLE - at handle + low
-                target = current_nut + np.array([0, 0, self.GRASP_OFFSET_Z]) + self.sq_handle_offset
-            self.pid.reset(target=target)
-
-        elif self.phase == 3:  # Square nut GRASP_WAIT - hold position for grasp
-            # Set grasp target ONCE when entering this phase, then hold steady
-            if not self.sq_grasp_target_set:
-                current_nut = np.array(obs['SquareNut_pos'])
-                nut_quat = obs['SquareNut_quat']
-                self.sq_handle_offset, _ = self._get_handle_offset_and_yaw(
-                    nut_quat, self.HANDLE_OFFSET_SQUARE
-                )
-                # Target = current nut position + grasp offset + handle offset
-                target = current_nut + np.array([0, 0, self.GRASP_OFFSET_Z]) + self.sq_handle_offset
-                self.pid.reset(target=target)
-                self.sq_grasp_target_set = True
-
-                # Update waypoints for lift+peg phases with current handle offset
-                self._update_waypoints_square(obs)
-            # After target is set, PID holds position without reset (allows convergence)
-
-        elif self.phase in [8, 9, 10]:  # Round nut approach phases (NOT grasp wait)
+        # Order: Round nut first (phases 0-8), transition wait (phase 9), square nut (phases 10-18)
+        # NOTE: Don't reset PID during WAIT phases (3, 13) - need stable hold position
+        if self.phase in [0, 1, 2]:  # Round nut approach phases (NOT grasp wait)
             current_nut = np.array(obs['RoundNut_pos'])
             nut_quat = obs['RoundNut_quat']
             # Compute handle offset and target yaw based on CURRENT rotation
@@ -416,32 +450,73 @@ class NutAssemblyPolicy(object):
             approach_direction = self.rd_handle_offset / self.HANDLE_OFFSET_ROUND  # unit vector
             approach_offset = approach_direction * self.APPROACH_EXTRA
 
-            if self.phase == 8:  # HOVER_ABOVE - outside + high
+            if self.phase == 0:  # HOVER_ABOVE - outside + high
                 target = current_nut + np.array([0, 0, self.HOVER_HEIGHT]) + self.rd_handle_offset + approach_offset
-            elif self.phase == 9:  # DESCEND_OUTSIDE - outside + low
+                self.pid.reset(target=target)  # Reset for far tracking
+            elif self.phase == 1:  # DESCEND_OUTSIDE - outside + low
                 target = current_nut + np.array([0, 0, self.GRASP_OFFSET_Z]) + self.rd_handle_offset + approach_offset
-            else:  # Phase 10: MOVE_TO_HANDLE - at handle + low
+                self.pid.reset(target=target)  # Reset for far tracking
+            else:  # Phase 2: MOVE_TO_HANDLE - at handle + low
                 target = current_nut + np.array([0, 0, self.GRASP_OFFSET_Z]) + self.rd_handle_offset
-            self.pid.reset(target=target)
+                # Update target WITHOUT resetting (allows PID to converge for final approach)
+                self.pid.target = np.array(target)
 
-        elif self.phase == 11:  # Round nut GRASP_WAIT - hold position for grasp
-            # Set grasp target ONCE when entering this phase, then hold steady
+        elif self.phase == 3:  # Round nut GRASP_WAIT - hold position for grasp
+            # DON'T reset PID target - gripper should already be at handle from phase 2
+            # Just update waypoints once for lift+peg phases
             if not self.rd_grasp_target_set:
-                current_nut = np.array(obs['RoundNut_pos'])
-                nut_quat = obs['RoundNut_quat']
-                self.rd_handle_offset, _ = self._get_handle_offset_and_yaw(
-                    nut_quat, self.HANDLE_OFFSET_ROUND
-                )
-                # Target = current nut position + grasp offset + handle offset
-                target = current_nut + np.array([0, 0, self.GRASP_OFFSET_Z]) + self.rd_handle_offset
-                self.pid.reset(target=target)
-                self.rd_grasp_target_set = True
-
-                # Update waypoints for lift+peg phases with current handle offset
                 self._update_waypoints_round(obs)
-            # After target is set, PID holds position without reset (allows convergence)
+                self.rd_grasp_target_set = True
+            # PID continues with last target from phase 2 (allows stable grip)
 
-        # Phases 4-7 and 12-15: Use FIXED waypoints (nut moves with gripper)
+        elif self.phase == 5:  # Round nut ROTATE_ALIGN - rotate handle toward robot
+            # DON'T update PID target - gripper stays in place while nut rotates around it
+            # The yaw control (applied later) will rotate the nut
+            # Just keep the gripper at its current position
+            pass
+
+        elif self.phase == 9:  # TRANSITION_WAIT - pause between completing round nut and starting square nut
+            # Keep gripper at current position while waiting
+            pass  # PID continues with last target, wait handled in phase transition logic
+
+        elif self.phase in [10, 11, 12]:  # Square nut approach phases (NOT grasp wait)
+            current_nut = np.array(obs['SquareNut_pos'])
+            nut_quat = obs['SquareNut_quat']
+            # Compute handle offset and target yaw based on CURRENT rotation
+            self.sq_handle_offset, self.sq_target_yaw = self._get_handle_offset_and_yaw(
+                nut_quat, self.HANDLE_OFFSET_SQUARE
+            )
+
+            # Compute approach offset (radially outward)
+            approach_direction = self.sq_handle_offset / self.HANDLE_OFFSET_SQUARE  # unit vector
+            approach_offset = approach_direction * self.APPROACH_EXTRA
+
+            if self.phase == 10:  # HOVER_ABOVE - outside + high
+                target = current_nut + np.array([0, 0, self.HOVER_HEIGHT]) + self.sq_handle_offset + approach_offset
+                self.pid.reset(target=target)  # Reset for far tracking
+            elif self.phase == 11:  # DESCEND_OUTSIDE - outside + low
+                target = current_nut + np.array([0, 0, self.GRASP_OFFSET_Z]) + self.sq_handle_offset + approach_offset
+                self.pid.reset(target=target)  # Reset for far tracking
+            else:  # Phase 12: MOVE_TO_HANDLE - at handle + low
+                target = current_nut + np.array([0, 0, self.GRASP_OFFSET_Z]) + self.sq_handle_offset
+                # Update target WITHOUT resetting (allows PID to converge for final approach)
+                self.pid.target = np.array(target)
+
+        elif self.phase == 13:  # Square nut GRASP_WAIT - hold position for grasp
+            # DON'T reset PID target - gripper should already be at handle from phase 12
+            # Just update waypoints once for lift+peg phases
+            if not self.sq_grasp_target_set:
+                self._update_waypoints_square(obs)
+                self.sq_grasp_target_set = True
+            # PID continues with last target from phase 12 (allows stable grip)
+
+        elif self.phase == 15:  # Square nut ROTATE_ALIGN - rotate handle toward robot
+            # DON'T update PID target - gripper stays in place while nut rotates around it
+            # The yaw control (applied later) will rotate the nut
+            # Just keep the gripper at its current position
+            pass
+
+        # Phases 4, 6-8 and 14, 16-18: Use FIXED waypoints (nut moves with gripper)
 
         control = self.pid.update(current_pos, self.DT)
         error = self.pid.get_error()
@@ -450,13 +525,37 @@ class NutAssemblyPolicy(object):
         threshold = self._get_threshold()
 
         # Phase transition logic
-        # FIX OPTION C: Removed yaw alignment requirement from hover phases (0, 8)
+        # FIX OPTION C: Removed yaw alignment requirement from hover phases (0, 10)
         # The gripper will still rotate during hover, but won't block if not aligned
         if error < threshold:
             if self._is_wait_phase():
                 self.wait_counter += 1
-                if self.wait_counter >= self.WAIT_STEPS:
-                    self._advance_phase()
+                # Use different wait time for different wait phases
+                if self.phase == 9:  # Transition wait
+                    wait_threshold = self.TRANSITION_WAIT_STEPS
+                    if self.wait_counter >= wait_threshold:
+                        self._advance_phase()
+                elif self.phase in [5, 15]:  # Rotate align phases - check ACTUAL yaw alignment
+                    # Get current nut yaw and compute error
+                    if self.phase == 5:
+                        nut_quat = obs['RoundNut_quat']
+                    else:
+                        nut_quat = obs['SquareNut_quat']
+                    nut_yaw = R.from_quat(nut_quat).as_euler('xyz')[2]
+                    current_yaw_error = abs(self.ALIGNED_HANDLE_YAW - nut_yaw)
+                    current_yaw_error = abs(np.arctan2(np.sin(current_yaw_error), np.cos(current_yaw_error)))
+
+                    # Advance only if: min steps elapsed AND yaw aligned OR max steps reached
+                    if (self.wait_counter >= self.ROTATE_ALIGN_MIN_STEPS and
+                        current_yaw_error < self.YAW_ALIGN_THRESHOLD):
+                        self._advance_phase()
+                    elif self.wait_counter >= self.ROTATE_ALIGN_STEPS:
+                        # Max steps reached - advance anyway to avoid getting stuck
+                        self._advance_phase()
+                else:  # Gripper phases
+                    wait_threshold = self.WAIT_STEPS
+                    if self.wait_counter >= wait_threshold:
+                        self._advance_phase()
             else:
                 self._advance_phase()
 
@@ -465,100 +564,229 @@ class NutAssemblyPolicy(object):
         action[0:3] = control          # Position control from PID
         action[6] = self._get_gripper_state()
 
-        # FIX OPTION B: Proper yaw rotation with normalized angles
-        # The gripper must align with the handle to successfully grasp
-        # Use atan2(sin, cos) normalization to avoid wrap-around oscillation
-        if self.phase in [0, 1]:  # Square nut HOVER / DESCEND - align with handle
-            rel_quat = obs.get('SquareNut_to_robot0_eef_quat', None)
-            if rel_quat is not None and np.sum(np.abs(rel_quat)) > 0:
-                raw_yaw = R.from_quat(rel_quat).as_euler('xyz')[2]
-                # Normalize to [-π, π] to avoid wrap-around
-                yaw_error = np.arctan2(np.sin(raw_yaw), np.cos(raw_yaw))
-                action[5] = self.YAW_GAIN * yaw_error
-        elif self.phase in [8, 9]:  # Round nut HOVER / DESCEND - align with handle
+        # Yaw rotation control using RotationPID
+        # Approach phases: align gripper yaw with handle using relative quaternion
+        # Lift/rotate/insert phases: rotate nut so handle points toward robot (-X)
+        if self.phase in [0, 1, 2]:  # Round nut approach phases - align with handle
             rel_quat = obs.get('RoundNut_to_robot0_eef_quat', None)
             if rel_quat is not None and np.sum(np.abs(rel_quat)) > 0:
                 raw_yaw = R.from_quat(rel_quat).as_euler('xyz')[2]
-                # Normalize to [-π, π]
-                yaw_error = np.arctan2(np.sin(raw_yaw), np.cos(raw_yaw))
-                action[5] = self.YAW_GAIN * yaw_error
-        elif self.phase in [5, 6]:  # Square nut MOVE_TO_PEG / INSERT - align nut with peg
+
+                # Decide flip direction on first hover (Phase 0 entry)
+                if self.rd_flip_180 is None:
+                    self.rd_flip_180 = abs(raw_yaw) > np.pi / 2
+                    # Set PID target based on flip decision
+                    target = np.pi if self.rd_flip_180 else 0.0
+                    self.yaw_pid_approach.reset(target=target)
+
+                # Use RotationPID for smooth convergence
+                yaw_control = self.yaw_pid_approach.update(raw_yaw, self.DT)
+                action[5] = -yaw_control  # Negative feedback
+
+        elif self.phase in [10, 11, 12]:  # Square nut approach phases - align with handle
+            rel_quat = obs.get('SquareNut_to_robot0_eef_quat', None)
+            if rel_quat is not None and np.sum(np.abs(rel_quat)) > 0:
+                raw_yaw = R.from_quat(rel_quat).as_euler('xyz')[2]
+
+                # Decide flip direction on first hover (Phase 10 entry)
+                if self.sq_flip_180 is None:
+                    self.sq_flip_180 = abs(raw_yaw) > np.pi / 2
+                    # Set PID target based on flip decision
+                    target = np.pi if self.sq_flip_180 else 0.0
+                    self.yaw_pid_approach.reset(target=target)
+
+                # Use RotationPID for smooth convergence
+                yaw_control = self.yaw_pid_approach.update(raw_yaw, self.DT)
+                action[5] = -yaw_control  # Negative feedback
+
+        elif self.phase in [4, 5]:  # Round nut LIFT and ROTATE_ALIGN
+            nut_quat = obs['RoundNut_quat']
+            nut_yaw = R.from_quat(nut_quat).as_euler('xyz')[2]
+            # Use align PID (target = π, handle toward robot)
+            yaw_control = self.yaw_pid_align.update(nut_yaw, self.DT)
+            action[5] = yaw_control
+
+        elif self.phase in [14, 15]:  # Square nut LIFT and ROTATE_ALIGN
             nut_quat = obs['SquareNut_quat']
             nut_yaw = R.from_quat(nut_quat).as_euler('xyz')[2]
-            # Snap to nearest 90° alignment (0, π/2, π, -π/2)
-            nearest_aligned = round(nut_yaw / (np.pi / 2)) * (np.pi / 2)
-            yaw_error = nearest_aligned - nut_yaw
-            yaw_error = np.arctan2(np.sin(yaw_error), np.cos(yaw_error))  # Normalize
-            action[5] = self.ALIGN_GAIN * yaw_error
+            # Use align PID (target = π, handle toward robot)
+            yaw_control = self.yaw_pid_align.update(nut_yaw, self.DT)
+            action[5] = yaw_control
+
+        elif self.phase in [6, 7]:  # Round nut insertion - maintain alignment
+            nut_quat = obs['RoundNut_quat']
+            nut_yaw = R.from_quat(nut_quat).as_euler('xyz')[2]
+            yaw_control = self.yaw_pid_align.update(nut_yaw, self.DT)
+            action[5] = yaw_control
+
+        elif self.phase in [16, 17]:  # Square nut insertion - maintain alignment
+            nut_quat = obs['SquareNut_quat']
+            nut_yaw = R.from_quat(nut_quat).as_euler('xyz')[2]
+            yaw_control = self.yaw_pid_align.update(nut_yaw, self.DT)
+            action[5] = yaw_control
 
         return action
 
-    def _update_waypoints_square(self, obs):
-        """Update square nut waypoints (lift + peg) with actual grasp handle offset."""
-        current_nut = np.array(obs['SquareNut_pos'])
-        hover = np.array([0, 0, self.HOVER_HEIGHT])
-        peg_hover = np.array([0, 0, self.PEG_HOVER_HEIGHT])
-        peg_insert = np.array([0, 0, self.PEG_INSERT_HEIGHT])
-
-        # Waypoint 4: LIFT - use current nut pos + handle offset
-        self.waypoints[4] = current_nut + hover + self.sq_handle_offset
-        # Waypoints 5, 6, 7: PEG phases
-        self.waypoints[5] = self.PEG1_POS + peg_hover + self.sq_handle_offset
-        self.waypoints[6] = self.PEG1_POS + peg_insert + self.sq_handle_offset
-        self.waypoints[7] = self.PEG1_POS + peg_insert + self.sq_handle_offset
-
     def _update_waypoints_round(self, obs):
-        """Update round nut waypoints (lift + peg) with actual grasp handle offset."""
+        """
+        [Short Description]: Update round nut waypoints (4-8) with actual grasp position.
+        [AI Declaration]: Generated using Claude (claude-opus-4-5-20251101) with the prompt:
+        "Update lift and peg waypoints once grasp is secured to use actual handle offset"
+
+        Args:
+            obs (dict): Current observation with RoundNut_pos.
+
+        Returns:
+            None (modifies self.waypoints in place).
+
+        Notes:
+            Called once in phase 3. Aligned_handle_offset assumes handle at -X after rotation.
+        """
         current_nut = np.array(obs['RoundNut_pos'])
         hover = np.array([0, 0, self.HOVER_HEIGHT])
         peg_hover = np.array([0, 0, self.PEG_HOVER_HEIGHT])
         peg_insert = np.array([0, 0, self.PEG_INSERT_HEIGHT])
 
-        # Waypoint 12: LIFT - use current nut pos + handle offset
-        self.waypoints[12] = current_nut + hover + self.rd_handle_offset
-        # Waypoints 13, 14, 15: PEG phases
-        self.waypoints[13] = self.PEG2_POS + peg_hover + self.rd_handle_offset
-        self.waypoints[14] = self.PEG2_POS + peg_insert + self.rd_handle_offset
-        self.waypoints[15] = self.PEG2_POS + peg_insert + self.rd_handle_offset
+        # Aligned handle offset: after ROTATE_ALIGN, handle points toward robot (-X)
+        aligned_handle_offset = np.array([-self.HANDLE_OFFSET_ROUND, 0, 0])
+
+        # Waypoint 4: LIFT - use current nut pos + handle offset
+        self.waypoints[4] = current_nut + hover + self.rd_handle_offset
+        # Waypoint 5: ROTATE_ALIGN - same position as lift (rotate in place)
+        self.waypoints[5] = current_nut + hover + self.rd_handle_offset
+        # Waypoints 6, 7, 8: PEG phases - use aligned handle offset for straight line motion
+        self.waypoints[6] = self.PEG2_POS + peg_hover + aligned_handle_offset
+        self.waypoints[7] = self.PEG2_POS + peg_insert + aligned_handle_offset
+        self.waypoints[8] = self.PEG2_POS + peg_insert + aligned_handle_offset
+
+    def _update_waypoints_square(self, obs):
+        """
+        [Short Description]: Update square nut waypoints (14-18) with actual grasp position.
+        [AI Declaration]: Generated using Claude (claude-opus-4-5-20251101) with the prompt:
+        "Update lift and peg waypoints once grasp is secured to use actual handle offset"
+
+        Args:
+            obs (dict): Current observation with SquareNut_pos.
+
+        Returns:
+            None (modifies self.waypoints in place).
+
+        Notes:
+            Called once in phase 13. Aligned_handle_offset assumes handle at -X after rotation.
+        """
+        current_nut = np.array(obs['SquareNut_pos'])
+        hover = np.array([0, 0, self.HOVER_HEIGHT])
+        peg_hover = np.array([0, 0, self.PEG_HOVER_HEIGHT])
+        peg_insert = np.array([0, 0, self.PEG_INSERT_HEIGHT])
+
+        # Aligned handle offset: after ROTATE_ALIGN, handle points toward robot (-X)
+        aligned_handle_offset = np.array([-self.HANDLE_OFFSET_SQUARE, 0, 0])
+
+        # Waypoint 14: LIFT - use current nut pos + handle offset
+        self.waypoints[14] = current_nut + hover + self.sq_handle_offset
+        # Waypoint 15: ROTATE_ALIGN - same position as lift (rotate in place)
+        self.waypoints[15] = current_nut + hover + self.sq_handle_offset
+        # Waypoints 16, 17, 18: PEG phases - use aligned handle offset for straight line motion
+        self.waypoints[16] = self.PEG1_POS + peg_hover + aligned_handle_offset
+        self.waypoints[17] = self.PEG1_POS + peg_insert + aligned_handle_offset
+        self.waypoints[18] = self.PEG1_POS + peg_insert + aligned_handle_offset
 
     def _advance_phase(self):
-        """Move to next phase and reset PID controller."""
+        """
+        [Short Description]: Advance to next phase with selective PID reset.
+        [AI Declaration]: Generated using Claude (claude-opus-4-5-20251101) with the prompt:
+        "Implement phase transition with position PID and rotation PID resets"
+
+        Args:
+            None
+
+        Returns:
+            None
+
+        Notes:
+            Position PID NOT reset for phases 3, 5, 9, 13, 15.
+            Rotation PID reset at phase 4/14 (start of lift) and 10 (second nut approach).
+        """
         if self.phase < len(self.waypoints) - 1:
             self.phase += 1
-            self.pid.reset(target=self.waypoints[self.phase])
+            # DON'T reset position PID for grasp phases (3, 13) - stay at current position
+            # Also don't reset for transition wait (9) or rotate_align (5, 15)
+            if self.phase not in [3, 5, 9, 13, 15]:
+                self.pid.reset(target=self.waypoints[self.phase])
+
+            # Reset rotation PIDs at key transitions
+            if self.phase == 4:  # Starting round nut lift - reset align PID
+                self.yaw_pid_align.reset(target=self.ALIGNED_HANDLE_YAW)
+            elif self.phase == 10:  # Starting square nut approach - reset approach PID
+                self.yaw_pid_approach.reset(target=0.0)
+                self.sq_flip_180 = None  # Reset flip decision for square nut
+            elif self.phase == 14:  # Starting square nut lift - reset align PID
+                self.yaw_pid_align.reset(target=self.ALIGNED_HANDLE_YAW)
+
             self.wait_counter = 0
 
     def _is_wait_phase(self):
-        """Check if current phase requires waiting for gripper."""
-        # Wait phases: 3 (grasp sq), 7 (release sq), 11 (grasp rd), 15 (release rd)
-        return self.phase in [3, 7, 11, 15]
+        """
+        [Short Description]: Check if current phase requires time-based waiting.
+        [AI Declaration]: Generated using Claude (claude-opus-4-5-20251101) with the prompt:
+        "Identify phases that need wait counter for gripper actuation or rotation"
+
+        Args:
+            None
+
+        Returns:
+            bool: True if phase requires waiting, False otherwise.
+
+        Notes:
+            Wait phases: 3, 13 (grasp), 5, 15 (rotate), 8, 18 (release), 9 (transition).
+        """
+        return self.phase in [3, 5, 8, 9, 13, 15, 18]
 
     def _get_threshold(self):
-        """Get adaptive threshold based on current phase."""
-        # TIGHT only for handle approach and grasp phases (need precise positioning)
-        # LOOSE for all other movement phases (hover, lift, move, insert, release)
-        if self.phase in [2, 3, 10, 11]:  # Move-to-handle and grasp phases - need precision
+        """
+        [Short Description]: Get adaptive position error threshold based on current phase.
+        [AI Declaration]: Generated using Claude (claude-opus-4-5-20251101) with the prompt:
+        "Design adaptive thresholds - tight for grasp/peg, loose for movement"
+
+        Args:
+            None
+
+        Returns:
+            float: Position error threshold in meters.
+
+        Notes:
+            TIGHT (2.5cm) for grasp, PEG (1cm) for insertion, LOOSE (6cm) for movement.
+        """
+        if self.phase in [3, 13]:  # Grasp wait phases - need precision
             return self.THRESHOLD_TIGHT
+        elif self.phase in [2, 12]:  # Move-to-handle - slightly relaxed
+            return 0.03  # 3cm
+        elif self.phase in [6, 16]:  # Move-to-peg - need precise alignment
+            return self.THRESHOLD_PEG  # 1.5cm (must be < clearance of 11mm for round)
         return self.THRESHOLD_LOOSE  # All other phases - movement tolerance OK
 
     def _get_gripper_state(self):
         """
-        Determine gripper state based on current phase.
+        [Short Description]: Determine gripper command based on current phase.
+        [AI Declaration]: Generated using Claude (claude-opus-4-5-20251101) with the prompt:
+        "Map 19 phases to gripper states for sequential round then square nut assembly"
 
-        Gripper Logic:
-        - Phases 0-2:   OPEN (approaching square nut handle)
-        - Phases 3-6:   CLOSED (grasping and placing square nut)
-        - Phases 7-10:  OPEN (releasing square, approaching round nut)
-        - Phases 11-14: CLOSED (grasping and placing round nut)
-        - Phase 15:     OPEN (releasing round nut)
+        Args:
+            None
+
+        Returns:
+            float: -1 (open) or +1 (close).
+
+        Notes:
+            OPEN: 0-2, 8-12, 18. CLOSE: 3-7, 13-17.
         """
         if self.phase < 3:
             return self.GRIPPER_OPEN
-        elif self.phase < 7:
+        elif self.phase < 8:
             return self.GRIPPER_CLOSE
-        elif self.phase < 11:
+        elif self.phase < 13:
             return self.GRIPPER_OPEN
-        elif self.phase < 15:
+        elif self.phase < 18:
             return self.GRIPPER_CLOSE
         else:
             return self.GRIPPER_OPEN
@@ -566,10 +794,9 @@ class NutAssemblyPolicy(object):
 
 class DoorPolicy(object):
     """
-    Policy for the Door Opening task.
-
-    [AI Declaration]: Generated using Claude with the prompt:
-    "Fix DoorPolicy to rotate gripper 90 degrees, reach handle, rotate handle, open door"
+    [Short Description]: 6-phase state machine policy for door opening with handle rotation.
+    [AI Declaration]: Generated using Claude (claude-opus-4-5-20251101) with the prompt:
+    "Implement DoorPolicy with gripper orientation, handle rotation, and pull tracking"
 
     Phase Sequence:
         0: ORIENT       - Rotate gripper 90 degrees (roll) so fingers can wrap handle
@@ -578,6 +805,9 @@ class DoorPolicy(object):
         3: GRIP         - Close gripper and wait for secure grip
         4: ROTATE       - Rotate handle to unlatch door
         5: PULL         - Pull door open while tracking handle
+
+    Notes:
+        Gripper rotation via action[3], handle rotation via action[4], pull in +Y direction.
     """
 
     KP = 3.0
@@ -606,12 +836,18 @@ class DoorPolicy(object):
 
     def __init__(self, obs):
         """
-        Initialize the door opening policy.
+        [Short Description]: Initialize policy with handle and end-effector positions.
+        [AI Declaration]: Generated using Claude (claude-opus-4-5-20251101) with the prompt:
+        "Set up 6-phase state machine for door opening with initial positions"
 
         Args:
-            obs (dict): Initial observation containing:
-                - obs['handle_pos']: [x, y, z] position of door handle
-                - obs['robot0_eef_pos']: [x, y, z] robot end-effector position
+            obs (dict): Initial observation with handle_pos, robot0_eef_pos.
+
+        Returns:
+            None
+
+        Notes:
+            Pull direction computed after ROTATE phase. Offsets tuned experimentally.
         """
         handle_pos = np.array(obs['handle_pos'])
         eef_pos = np.array(obs['robot0_eef_pos'])
@@ -637,13 +873,18 @@ class DoorPolicy(object):
 
     def get_action(self, obs):
         """
-        Compute action for current timestep.
+        [Short Description]: Compute 7D action with position control, rotation, and gripper.
+        [AI Declaration]: Generated using Claude (claude-opus-4-5-20251101) with the prompt:
+        "Implement get_action with gripper rotation, handle rotation, and dynamic tracking"
 
         Args:
-            obs (dict): Current observation.
+            obs (dict): Current observation with robot0_eef_pos, handle_pos, handle_qpos.
 
         Returns:
-            np.ndarray: 7D action [dx, dy, dz, ax, ay, az, gripper]
+            np.ndarray: 7D action [dx, dy, dz, ax, ay, az, gripper].
+
+        Notes:
+            Handle tracked dynamically during phases 3-5. HANDLE_THRESHOLD triggers PULL.
         """
         current_pos = np.array(obs['robot0_eef_pos'])
         handle_pos = np.array(obs['handle_pos'])
