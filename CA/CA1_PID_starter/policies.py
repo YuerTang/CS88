@@ -207,7 +207,7 @@ class NutAssemblyPolicy(object):
     DT = 0.05
 
     # Height parameters
-    HOVER_HEIGHT = 0.08       # Height above nut to hover (same as StackPolicy)
+    HOVER_HEIGHT = 0.12       # Height above nut to hover (increased to avoid gripper-nut collision)
     GRASP_OFFSET_Z = -0.01    # Grasp 1cm below nut center (accounts for EEF-to-finger offset)
     HANDLE_OFFSET_SQUARE = 0.054  # From square-nut.xml: handle_site pos="0.054 0 0"
     HANDLE_OFFSET_ROUND = 0.06    # From round-nut.xml: handle_site pos="0.06 0 0"
