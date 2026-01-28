@@ -252,8 +252,10 @@ class NutAssemblyPolicy(object):
 
     # Yaw rotation control (to align gripper with handle direction)
     YAW_GAIN = 1.0            # Proportional gain for yaw rotation (high for fast alignment)
+    INSERTION_YAW_GAIN = 2.0  # Higher gain during insertion to fight contact forces
     ALIGN_GAIN = 0.3          # Proportional gain for aligning nut with peg
     YAW_ALIGNED_THRESHOLD = 0.3  # Yaw must be within this (radians) to proceed from hover
+    INSERTION_YAW_THRESHOLD = 0.1  # ~5.7 deg - moderate alignment requirement
 
     # Gripper states
     GRIPPER_OPEN = -1
@@ -672,20 +674,22 @@ class NutAssemblyPolicy(object):
             yaw_error = target_yaw - nut_yaw
             yaw_error = np.arctan2(np.sin(yaw_error), np.cos(yaw_error))  # Normalize
             action[5] = self.YAW_GAIN * yaw_error
-        elif self.phase in [6, 7]:  # Round nut insertion - continue yaw correction
+        elif self.phase in [6, 7]:  # Round nut insertion - stronger yaw correction
             nut_quat = obs['RoundNut_quat']
             nut_yaw = R.from_quat(nut_quat).as_euler('xyz')[2]
             target_yaw = self.rd_align_target_yaw if self.rd_align_target_yaw is not None else self.ALIGNED_HANDLE_YAW
             yaw_error = target_yaw - nut_yaw
             yaw_error = np.arctan2(np.sin(yaw_error), np.cos(yaw_error))
-            action[5] = self.YAW_GAIN * yaw_error
-        elif self.phase in [16, 17]:  # Square nut insertion - continue yaw correction
+            # Use higher gain during insertion to fight contact forces
+            action[5] = self.INSERTION_YAW_GAIN * yaw_error
+        elif self.phase in [16, 17]:  # Square nut insertion - stronger yaw correction
             nut_quat = obs['SquareNut_quat']
             nut_yaw = R.from_quat(nut_quat).as_euler('xyz')[2]
             target_yaw = self.sq_align_target_yaw if self.sq_align_target_yaw is not None else self.ALIGNED_HANDLE_YAW
             yaw_error = target_yaw - nut_yaw
             yaw_error = np.arctan2(np.sin(yaw_error), np.cos(yaw_error))
-            action[5] = self.YAW_GAIN * yaw_error
+            # Use higher gain during insertion to fight contact forces
+            action[5] = self.INSERTION_YAW_GAIN * yaw_error
 
         return action
 
