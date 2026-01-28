@@ -1,5 +1,5 @@
 import numpy as np
-from pid import PID, RotationPID
+from pid import PID
 from scipy.spatial.transform import Rotation as R
 
 class StackPolicy(object):

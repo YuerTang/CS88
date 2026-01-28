@@ -2,22 +2,23 @@ import numpy as np
 import robosuite as suite
 import time
 from scipy.spatial.transform import Rotation as R
-from policies2 import *
+from policies2 import NutAssemblyPolicy
 
 
 # create environment instance
 env = suite.make(
-    env_name="NutAssembly", # replace with other tasks "NutAssembly" and "Door"
+    env_name="NutAssembly",
     robots="Panda",
     has_renderer=True,
     has_offscreen_renderer=False,
     use_camera_obs=False,
 )
 
-# RENDER_DELAY = 0.05  # Slow down rendering (50ms per frame)
+# Track success rate
+num_episodes = 10
+successes = 0
 
-# reset the environment
-for episode in range(10):
+for episode in range(num_episodes):
     obs = env.reset()
     policy = NutAssemblyPolicy(obs)
     step = 0
@@ -25,25 +26,33 @@ for episode in range(10):
 
     while True:
         action = policy.get_action(obs)
-        obs, reward, done, info = env.step(action)  # take action in the environment
+        obs, reward, done, info = env.step(action)
 
-        env.render()  # render on display
-        # time.sleep(RENDER_DELAY)  # Slow down for observation
+        env.render()
 
-        # Debug: print EEF position, orientation, and action
+        # Debug: print phase changes
         eef_pos = obs['robot0_eef_pos']
         eef_quat = obs['robot0_eef_quat']
         eef_euler = R.from_quat(eef_quat).as_euler('xyz', degrees=True)
 
         phase_changed = (policy.phase != prev_phase)
-        if phase_changed or step % 30 == 0:
+        if phase_changed or step % 50 == 0:
             print(f"Step {step:4d} | Phase {policy.phase:2d} | "
                   f"EEF:[{eef_pos[0]:6.3f},{eef_pos[1]:6.3f},{eef_pos[2]:6.3f}] | "
-                  f"Euler:[{eef_euler[0]:6.1f},{eef_euler[1]:6.1f},{eef_euler[2]:6.1f}] | "
-                  f"Ori:[{action[3]:6.3f},{action[4]:6.3f},{action[5]:6.3f}]")
+                  f"Yaw:{eef_euler[2]:6.1f} deg")
             prev_phase = policy.phase
         step += 1
 
-        if reward == 1.0 or done: break
+        if reward == 1.0:
+            successes += 1
+            print(f"Episode {episode+1}: SUCCESS at step {step}")
+            break
+        elif done:
+            print(f"Episode {episode+1}: FAILED at step {step}, phase {policy.phase}")
+            break
 
-    print(f"Episode {episode+1} ended at step {step}")
+print(f"\n{'='*50}")
+print(f"Results: {successes}/{num_episodes} success ({100*successes/num_episodes:.0f}%)")
+print(f"{'='*50}")
+
+env.close()

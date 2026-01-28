@@ -76,3 +76,102 @@ class PID:
         self.previous_error = error
 
         return P + I + D
+
+
+class RotationPID:
+    """
+    PID controller for angular control with proper angle wrapping.
+
+    Handles the discontinuity at ±π by normalizing angular errors.
+    Includes integral anti-windup by clamping the integral term.
+    """
+
+    def __init__(self, kp: float, ki: float, kd: float, target: float = 0.0):
+        """
+        Initialize rotation PID controller.
+
+        Args:
+            kp: Proportional gain.
+            ki: Integral gain.
+            kd: Derivative gain.
+            target: Target angle in radians.
+        """
+        self.kp = kp
+        self.ki = ki
+        self.kd = kd
+        self.target = target
+        self.integral_error = 0.0
+        self.previous_error = None
+        self.integral_limit = np.pi  # Anti-windup limit
+
+    def reset(self, target: float = None) -> None:
+        """
+        Reset internal state and optionally set new target.
+
+        Args:
+            target: New target angle in radians (optional).
+        """
+        self.integral_error = 0.0
+        self.previous_error = None
+        if target is not None:
+            self.target = target
+
+    def _normalize_angle(self, angle: float) -> float:
+        """
+        Normalize angle to [-π, π] range.
+
+        Args:
+            angle: Angle in radians.
+
+        Returns:
+            Normalized angle in [-π, π].
+        """
+        return np.arctan2(np.sin(angle), np.cos(angle))
+
+    def get_error(self) -> float:
+        """
+        Get the magnitude of the last angular error.
+
+        Returns:
+            Absolute angular error in radians, or 0.0 if not yet updated.
+        """
+        if self.previous_error is None:
+            return 0.0
+        return abs(self.previous_error)
+
+    def update(self, current_angle: float, dt: float) -> float:
+        """
+        Compute PID control signal for angular control.
+
+        Args:
+            current_angle: Current angle in radians.
+            dt: Time step since last update (seconds).
+
+        Returns:
+            Control output (rotation rate command).
+        """
+        # Compute error with proper angle wrapping
+        error = self._normalize_angle(self.target - current_angle)
+
+        # Proportional term
+        P = self.kp * error
+
+        # Integral term with anti-windup
+        self.integral_error += error * dt
+        self.integral_error = np.clip(
+            self.integral_error, -self.integral_limit, self.integral_limit
+        )
+        I = self.ki * self.integral_error
+
+        # Derivative term
+        if self.previous_error is None:
+            D = 0.0
+        else:
+            # Use normalized difference for derivative
+            error_diff = self._normalize_angle(error - self.previous_error)
+            D = self.kd * error_diff / dt
+
+        # Store current error for next iteration
+        self.previous_error = error
+
+        return P + I + D
