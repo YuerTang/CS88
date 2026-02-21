@@ -1,0 +1,552 @@
+\documentclass[10pt,a4paper]{article}
+\usepackage[a4paper,margin=0.12in]{geometry}
+\usepackage{multicol}
+\usepackage{xcolor}
+\usepackage{enumitem}
+\usepackage{amsmath,amssymb}
+\usepackage{array}
+\usepackage{colortbl}
+\usepackage{tabularx}
+\usepackage{graphicx}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\pagestyle{empty}
+
+% ── COLORS ──────────────────────────────────────
+\definecolor{cblue}{HTML}{1E40AF}
+\definecolor{cgreen}{HTML}{166534}
+\definecolor{corange}{HTML}{C2410C}
+\definecolor{cpurple}{HTML}{7E22CE}
+\definecolor{cred}{HTML}{B91C1C}
+\definecolor{cteal}{HTML}{0F766E}
+\definecolor{cbg}{HTML}{EDF2FF}
+\definecolor{rulecolor}{HTML}{CBD5E1}
+
+% ── SECTION HEADER ──
+\newcommand{\sect}[2]{%
+  \vspace{5pt}%
+  {\noindent\fontsize{8}{9.2}\selectfont\sffamily\bfseries\textcolor{#1}{\rule{2pt}{8pt}\;\,#2}\par\nobreak}%
+  \vspace{-1pt}\noindent{\color{#1}\rule{\columnwidth}{0.5pt}}\vspace{2pt}\par\nobreak%
+}
+
+% ── SUB-HEADER ──
+\newcommand{\sub}[1]{%
+  \vspace{2.5pt}{\noindent\fontsize{6}{7}\selectfont\sffamily\bfseries #1}\vspace{1pt}\par\nobreak%
+}
+
+\newcommand{\cd}[1]{{\fontsize{5.5}{6.5}\selectfont\texttt{#1}}}
+\newcommand{\ra}{\,{\fontsize{4.8}{4.8}\selectfont$\boldsymbol{\rightarrow}$}\,}
+\newcommand{\W}{\textcolor{cred}{\fontsize{5.8}{5.8}\selectfont$\blacktriangleright$}\,}
+
+\setlist[itemize]{leftmargin=7pt, itemsep=0pt, parsep=0pt, topsep=0.5pt, partopsep=0pt, label={\scriptsize$\bullet$}}
+\setlength{\tabcolsep}{3pt}
+\renewcommand{\arraystretch}{1.1}
+
+\begin{document}
+
+\fontsize{6}{7.2}\selectfont
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.3pt}
+\setlength{\columnsep}{5pt}
+\setlength{\columnseprule}{0.15pt}
+\def\columnseprulecolor{\color{rulecolor}}
+
+\hfill{\fontsize{5.5}{6.5}\selectfont\textbf{CS 188 Midterm --- Yuer Tang} \enspace 005959967}\par\vspace{1pt}
+
+\begin{multicols}{3}
+
+% ═══════════════════════════════════════════════════
+%  FUNDAMENTALS  (Prac Q1a,b  PS3 Q3d  Prac Q3a,d)
+% ═══════════════════════════════════════════════════
+\sect{cblue}{FUNDAMENTALS}
+
+\sub{Gr\"ubler's Formula (DoF) [Prac Q1b, Q3d]}
+$\text{dof} = m(N{-}1{-}J) + \sum f_i$.\enspace $m{=}3$ planar, $m{=}6$ spatial.\\
+$N$=\#links (incl.\ ground), $J$=\#joints, $f_i$=DoF of joint $i$.\\
+\begin{tabular}{@{}l|c|c|c@{}}
+\rowcolor{cbg}\textbf{Joint} & $f$ & $c$(2D) & $c$(3D)\\
+Revolute/Prismatic & 1 & 2 & 5\\
+\rowcolor{cbg!40}Helical & 1 & -- & 5\\
+Cylindrical & 2 & -- & 4\\
+\rowcolor{cbg!40}Universal & 2 & -- & 4\\
+Spherical & 3 & -- & 3\\
+\end{tabular}\\
+\W \textbf{Redundant:} more DoF than task needs (Prac Q1b: \textbf{C}).\\
+ALOHA: $N{=}15, J{=}16$ (12R+4S), dof$=6(14){-}(60{+}12)=12$.
+
+\sub{Sensors [Prac Q1a]}
+\begin{tabular}{@{}l|l|l@{}}
+\rowcolor{cbg} & \textbf{Proprioceptive} & \textbf{Exteroceptive}\\
+\textbf{Active} & Motor current & \textbf{LiDAR}, sonar\\
+\rowcolor{cbg!40}\textbf{Passive} & Encoder, IMU & Camera\\
+\end{tabular}\\
+LiDAR = \textbf{active, exteroceptive} (Prac Q1a: \textbf{D}).
+
+\sub{Gear Ratio [Prac Q3a]}
+Ratio $= \frac{\text{driven teeth}}{\text{driving teeth}}$. Ratio $n$:1\ra speed$/n$, torque$\times n$.\\
+Ex: 10 drives 40\ra ratio=4:1, speed$\div 4$, torque$\times 4$.
+
+% ═══════════════════════════════════════════════════
+%  DH PARAMETERS  (Prac Q4: 10pts)
+% ═══════════════════════════════════════════════════
+\sect{cblue}{DH PARAMETERS [Prac Q4: 10pts]}
+
+\sub{Frame Assignment}
+\textbf{z-axis:} along \textbf{joint axis} (R: rotation, P: sliding).\\
+\textbf{x-axis:} common normal from $z_{i-1}$ to $z_i$.\\
+If $z$'s parallel: $x_i$ from $z_{i-1}$ toward $z_i$.\\
+If intersect: $x_i = z_{i-1} \times z_i$.
+
+\sub{4 DH Parameters}
+\begin{tabular}{@{}l|l|l@{}}
+\rowcolor{cbg}\textbf{Param} & \textbf{Definition} & \textbf{Axis}\\
+$\alpha_{i-1}$ & $\angle$ from $z_{i-1}$ to $z_i$ & around $x_{i-1}$\\
+\rowcolor{cbg!40}$a_{i-1}$ & dist $z_{i-1}$ to $z_i$ & along $x_{i-1}$\\
+$d_i$ & dist $x_{i-1}$ to $x_i$ & along $z_i$\\
+\rowcolor{cbg!40}$\theta_i$ & $\angle$ from $x_{i-1}$ to $x_i$ & around $z_i$\\
+\end{tabular}\\
+\W \textbf{R} joint\ra $\theta_i$ variable. \textbf{P} joint\ra $d_i$ variable.
+
+\sub{DH Transformation Matrix}
+$T = \text{Rot}(x,\alpha)\!\cdot\!\text{Trans}(x,a)\!\cdot\!\text{Trans}(z,d)\!\cdot\!\text{Rot}(z,\theta)$\\[1pt]
+{\fontsize{5}{6}\selectfont
+${}^{i-1}T_i = \begin{bmatrix} c\theta & -s\theta & 0 & a \\ s\theta c\alpha & c\theta c\alpha & -s\alpha & -s\alpha d \\ s\theta s\alpha & c\theta s\alpha & c\alpha & c\alpha d \\ 0 & 0 & 0 & 1 \end{bmatrix}$
+}\\
+FK: ${}^0T_n = {}^0T_1 \cdot {}^1T_2 \cdots {}^{n-1}T_n$. Last col = position.
+
+\sub{RPR Example [Prac Q4a]}
+\begin{tabular}{@{}c|c|c|c|c@{}}
+\rowcolor{cbg}$i$ & $\alpha_{i-1}$ & $a_{i-1}$ & $d_i$ & $\theta_i$\\
+1 & $0$ & $0$ & $0$ & $\theta_1^*$\\
+\rowcolor{cbg!40}2 & $90^\circ$ & $0$ & $d_2^*$ & $0$\\
+3 & $-90^\circ$ & $0$ & $0$ & $\theta_3^*$\\
+\end{tabular}\; $^*$variable\\
+If $\alpha{=}0$: $s\alpha{=}0,c\alpha{=}1$. If $\alpha{=}90^\circ$: $s\alpha{=}1,c\alpha{=}0$.
+
+\sub{DH FK Computation [Prac Q4b]}
+For joint 2 ($\alpha{=}90^\circ,a{=}0,d{=}d_2,\theta{=}0$):\\
+{\fontsize{5}{6}\selectfont
+${}^1T_2 = \begin{bmatrix} 1 & 0 & 0 & 0 \\ 0 & 0 & -1 & -d_2 \\ 0 & 1 & 0 & 0 \\ 0 & 0 & 0 & 1 \end{bmatrix}$
+}\;($c0{=}1,s0{=}0,c90{=}0,s90{=}1$)\\
+${}^0T_3 = {}^0T_1 \cdot {}^1T_2 \cdot {}^2T_3$. Position = last column of result.
+
+% ═══════════════════════════════════════════════════
+%  FK / IK  (Prac Q4b,c)
+% ═══════════════════════════════════════════════════
+\sect{cblue}{FK \& IK [Prac Q4b--c]}
+
+\sub{2-Link Forward Kinematics}
+$x = l_1 c_1 + l_2 c_{12}$, \enspace $y = l_1 s_1 + l_2 s_{12}$\\
+where $c_{12} = \cos(\theta_1{+}\theta_2)$, $s_{12} = \sin(\theta_1{+}\theta_2)$.
+
+\sub{Inverse Kinematics}
+\textbf{Step 1:} $\cos\theta_2 = \frac{x^2 + y^2 - l_1^2 - l_2^2}{2 l_1 l_2}$ (law of cosines).\\
+Two solutions: $\theta_2$ and $-\theta_2$ (elbow up/down).\\
+\textbf{Step 2:} $\theta_1 = \text{atan2}(y,x) - \text{atan2}(l_2 s_2, l_1 {+} l_2 c_2)$.\\
+\W IK challenges: multiple solutions, singularities ($\theta_2{=}0,\pi$), may be unreachable ($|c\theta_2|{>}1$).
+
+\sub{IK Worked Example}
+Given $l_1{=}l_2{=}1$, reach $(x,y){=}(1,1)$:\\
+$c\theta_2 = \frac{1+1-1-1}{2} = 0$\ra $\theta_2 = 90^\circ$ (or $-90^\circ$).\\
+$\theta_1 = \text{atan2}(1,1) - \text{atan2}(1,1+0) = 45^\circ - 45^\circ = 0^\circ$.\\
+Check: $x{=}\cos0 + \cos90{=}1{+}0{=}1$\checkmark, $y{=}\sin0+\sin90{=}0{+}1{=}1$\checkmark.
+
+\sub{Jacobian}
+$\dot{\mathbf{x}} = J\,\dot{\boldsymbol{\theta}}$.
+Singularity: $\det(J){=}l_1 l_2 \sin\theta_2{=}0$ at $\theta_2{=}0,\pi$.\\
+At singularity: lose a DOF, can't move in some direction.
+
+% ═══════════════════════════════════════════════════
+%  CAMERA  (Prac Q5: 15pts, Q1f: 3pts)
+% ═══════════════════════════════════════════════════
+\sect{cgreen}{CAMERA [Prac Q5: 15pts]}
+
+\sub{Full Projection Equation}
+$\boxed{s\begin{bmatrix} u \\ v \\ 1 \end{bmatrix} = K\,[R \mid t]\,\begin{bmatrix} X_w \\ Y_w \\ Z_w \\ 1 \end{bmatrix}}$\\
+$s = Z_c$ (depth in camera frame).
+
+\sub{Intrinsic Matrix $K$}
+$K = \begin{bmatrix} f_x & 0 & u_0 \\ 0 & f_y & v_0 \\ 0 & 0 & 1 \end{bmatrix}$\enspace
+$f_x,f_y$=focal length (px), $(u_0,v_0)$=principal point.\\
+Larger $f$\ra more zoomed. $K$ doesn't change when camera moves.
+
+\sub{Extrinsic $[R|t]$ --- world TO camera}
+\W $[R|t]$ is \textbf{NOT} camera pose! Camera position: $\mathbf{C} = -R^T t$.\\
+$R$=$3{\times}3$ rotation ($R^T{=}R^{-1}$), $t$=$3{\times}1$ translation.
+
+\sub{Projection Steps [Prac Q5a--d]}
+\textbf{1.} World\ra Camera: $\mathbf{P}_c = R\,\mathbf{P}_w + t$\\
+\textbf{2.} Normalize: $x_n = X_c/Z_c$, $y_n = Y_c/Z_c$\\
+\textbf{3.} Pixel: $u = f_x x_n + u_0$, $v = f_y y_n + v_0$\\
+\textbf{Back-proj} (need depth $Z$): $X = (u{-}u_0)Z/f_x$, $Y = (v{-}v_0)Z/f_y$.
+
+\sub{Camera Projection Pipeline [Prac Q5a--d]}
+\textbf{Given:} depth cam pixel $(u_d,v_d)$, depth $D$, K, $[R|t]$ to RGB cam.\\
+\textbf{Step 1 --- Back-project to 3D:} $\mathbf{P}_{3D} = D \cdot K^{-1}[u_d, v_d, 1]^T$\\
+\textbf{Step 2 --- Transform to RGB frame:} $\mathbf{P}_{rgb} = R \cdot \mathbf{P}_{3D} + t$\\
+\textbf{Step 3 --- Project to RGB pixel:} $s[u',v',1]^T = K \cdot \mathbf{P}_{rgb}$\\
+\textbf{Step 4 --- Find closest:} $\arg\min_i \|(u',v') - (u^*_i, v^*_i)\|$
+
+\sub{Depth \& Calibration}
+Stereo: $Z = fB/d$ (disparity). FoV: $2\text{atan}(d/2f)$.\\
+Calibration: min 6 point correspondences (11 unknowns).\\
+\textbf{Kabsch} [Prac Q1f: \textbf{B,D}]: SVD aligns two sets of 3D points.\\
+$H{=}P^TQ$, $USV^T{=}\text{svd}(H)$, $R{=}V\text{diag}(1,1,\det(VU^T))U^T$, $t{=}\bar{q}{-}R\bar{p}$.\\
+Need $\ge 3$ non-collinear 3D point correspondences.
+
+% ═══════════════════════════════════════════════════
+%  CONTROL / PID  (Prac Q1d: 3pts)
+% ═══════════════════════════════════════════════════
+\sect{cblue}{CONTROL [Prac Q1d]}
+
+$u(t) = K_p e(t) + K_i \int_0^t e(\tau)\,d\tau + K_d \dot{e}(t)$\\
+\begin{tabular}{@{}l|l|l@{}}
+\rowcolor{cbg}\textbf{Term} & \textbf{Effect} & \textbf{Too high}\\
+P & Reduces error & Oscillate\\
+\rowcolor{cbg!40}I & Kills steady-state err & Overshoot\\
+D & Damps oscillations & \textbf{Noise sensitive} (Q1d: \textbf{C})\\
+\end{tabular}\\
+Open-loop: no feedback, drifts. Closed-loop: sensor feedback corrects.
+
+% ═══════════════════════════════════════════════════
+%  MOTION PLANNING  (PS3 Q3: 18pts, Prac Q1e: 3pts)
+% ═══════════════════════════════════════════════════
+\sect{corange}{MOTION PLANNING [PS3 Q3: 18pts]}
+
+\sub{Configuration Space}
+$C_{free}$ = collision-free configs, $C_{obs}$ = collision configs.\\
+Planning converts any robot to a \textbf{point} in C-space.
+
+\sub{PRM (Probabilistic Roadmap) --- Multi-query}
+\textbf{Phase 1 Build:} sample $N$ configs in $C_{free}$, connect nearby collision-free\ra undirected graph.\\
+\textbf{Phase 2 Query:} connect start/goal to graph, run Dijkstra/A*.\\
+\W Prob.\ complete. Reusable for \textbf{many queries}. Bad for dynamic env.
+
+\sub{RRT (Rapidly-exploring Random Tree) --- Single-query}
+Tree from $q_{start}$. Loop: sample $q_{rand}$, find $q_{near}$, extend by step $\varepsilon$ toward $q_{rand}$\ra $q_{new}$, add if collision-free.\\
+$q_{new} = q_{near} + \varepsilon \cdot \frac{q_{rand} - q_{near}}{\|q_{rand} - q_{near}\|}$.\\
+\W Prob.\ complete. \textbf{NOT optimal}. Good for \textbf{single query}, high-dim.
+
+\sub{PRM vs RRT [Prac Q1e: \textbf{A,B}]}
+\begin{tabular}{@{}l|l|l@{}}
+\rowcolor{cbg} & \textbf{PRM} & \textbf{RRT}\\
+Structure & Undirected graph & Tree\\
+\rowcolor{cbg!40}Query & Multi-query & Single-query\\
+Preprocess & Yes & No\\
+\rowcolor{cbg!40}Best for & Static, many queries & Dynamic, one-shot\\
+\end{tabular}
+
+% ═══════════════════════════════════════════════════
+%  PARTICLE FILTER  (PS3 Q1: 33pts)
+% ═══════════════════════════════════════════════════
+\sect{cteal}{PARTICLE FILTER [PS3 Q1: 33pts]}
+
+\sub{4-Step Algorithm}
+\textbf{1. Initialize:} scatter $N$ particles randomly.\\
+\textbf{2. Move (Predict)} [Q1e]: motion model + noise:\\
+\quad $\Theta' = \Theta + \mathcal{N}(0,\sigma_\Theta)$, \enspace $d' = d + \mathcal{N}(0,\sigma_d)$\\
+\quad $x_{t+1} = x_t + d'\cos\Theta'$, \enspace $y_{t+1} = y_t + d'\sin\Theta'$\\
+\W Robot \textbf{turns first} ($\Theta$), \textbf{then moves} ($x,y$).\\
+\textbf{3. Update (Weight)} [Q1f]: weight = $P(\text{reading} \mid \text{location})$.\\
+\quad \textbf{Measurement model} [Q1c: \textbf{B}] = $P(\text{sensor reading} \mid \text{robot at loc})$.\\
+\quad Gaussian PDF: closer match\ra higher weight.\\
+\quad \textbf{Posterior via Bayes} [Q1b: \textbf{C}]:
+\[
+\boxed{P(\text{loc}|\text{read}) = \frac{P(\text{read}|\text{loc})\,P(\text{loc})}{P(\text{read})}}
+\]
+\textbf{4. Resample} [Q1a: \textbf{A}]: draw $N$ new particles $\propto$ weights.\\
+\W \textbf{Concentrate on high-prob particles} (discard low, duplicate high).\\
+\W $N_{eff} = 1/\sum w_i^2$. Use $\log(p)$ for underflow. Reset weights to $1/N$.
+
+\sub{PF vs KF [PS3 Q1g --- 10 pts!]}
+\begin{tabular}{@{}l|c|c@{}}
+\rowcolor{cbg}\textbf{Concept} & \textbf{PF} & \textbf{KF}\\
+Belief w/ particles (samples) & $\checkmark$ & \\
+\rowcolor{cbg!40}Assumes Gaussian + linear & & $\checkmark$\\
+Uses motion \& meas.\ models & $\checkmark$ & $\checkmark$\\
+\rowcolor{cbg!40}Handles nonlinear/non-Gaussian & $\checkmark$ & \\
+Single mean + covariance & & $\checkmark$\\
+\rowcolor{cbg!40}Prediction-update (Bayes cycle) & $\checkmark$ & $\checkmark$\\
+Resampling needed & $\checkmark$ & \\
+\rowcolor{cbg!40}Optimal gain (Kalman gain) & & $\checkmark$\\
+Requires initial estimate & $\checkmark$ & $\checkmark$\\
+\rowcolor{cbg!40}Used for localization \& SLAM & $\checkmark$ & $\checkmark$\\
+\end{tabular}\\
+\W PF advantage [Q1d: \textbf{A}]: handles \textbf{nonlinear + non-Gaussian}.
+
+% ═══════════════════════════════════════════════════
+%  SLAM  (PS3 Q2: 20pts, Prac Q6: 15pts, Prac Q2d: 3pts)
+% ═══════════════════════════════════════════════════
+\sect{cteal}{SLAM [PS3 Q2: 20pts, Prac Q6: 15pts]}
+
+\sub{What is SLAM? [Q2a: C]}
+Map unknown environment \textbf{while} tracking robot pose.\\
+Chicken-and-egg: need map to localize, need location to map.
+
+\sub{Why EKF, not KF? [Q2b: B, Q2c: B]}
+SLAM models are \textbf{nonlinear}\ra basic KF fails.\\
+\textbf{EKF} = recursive estimator using \textbf{Jacobians} to \textbf{linearize}.
+
+\sub{Loop Closure [Q2d: C]}
+Recognize previously visited location\ra \textbf{reduces uncertainty} in pose and map.
+
+\sub{EKF-SLAM [Q2e, Prac Q2d fill-in]}
+State: $[x,y,\theta, x_1,y_1, \ldots, x_n,y_n]$. Cov: $(2n{+}3){\times}(2n{+}3)$.\\
+\textbf{Prediction}: uses \textbf{motion model} (fill-in: \textbf{L}).\\
+\textbf{Update}: incorporates \textbf{sensor data} (fill-in: \textbf{K}).\\
+Belief updated using \textbf{Bayes} rule (fill-in: \textbf{N}).\\
+\W Motion update: $\boxed{O(n^2)}$. Overall: $O(n^3)$.
+
+\sub{FastSLAM [Prac Q6: 15 pts!]}
+Particle filter (trajectory) + local EKFs (landmarks).\\
+Each particle has 1 EKF per landmark.\\
+\textbf{Total \# EKFs} = $M \times N$ [Q6b]. Ex: $50 \times 20 = \mathbf{1000}$.\\
+\textbf{Complexity:} $\boxed{O(M \cdot n)}$ per step [Q6c].\\
+\W Faster than EKF-SLAM when $\boxed{M \ll n}$ [Q6d].\\
+\quad Because $O(Mn) < O(n^2)$ when $M < n$.
+
+\begin{tabular}{@{}l|l|l@{}}
+\rowcolor{cbg} & \textbf{EKF-SLAM} & \textbf{FastSLAM}\\
+State & Joint (pose+map) & Factored\\
+\rowcolor{cbg!40}Belief & One Gaussian & Particles + EKFs\\
+Per-step & $O(n^2)$ & $O(M \cdot n)$\\
+\rowcolor{cbg!40}\# EKFs & 1 (size $2n{+}3$) & $M \times n$ (size 2)\\
+Scales to & Small $n$ & Large $n$\\
+\end{tabular}\\
+$M$=\#particles, $n$=\#landmarks.
+
+% ═══════════════════════════════════════════════════
+%  MDPs  (PS3 Q4: 20pts, Prac Q7: 15pts, Prac Q2c, Q3b)
+% ═══════════════════════════════════════════════════
+\sect{cpurple}{MDPs [PS3 Q4: 20pts, Prac Q7: 15pts]}
+
+\sub{MDP = $(S, A, P, R, \gamma)$}
+$S$=states, $A$=actions, $P(s'|s,a)$=transition, $R(s,a,s')$=reward, $\gamma$=discount.\\
+\W \textbf{Markov Property} [Q4a: \textbf{A}, Q3b]: future depends \textbf{only on current state}.\\
+\textbf{Policy} [Q4b: \textbf{C}]: mapping from states to actions. $\pi: S \to A$.\\
+\textbf{Goal} [Q4c: \textbf{B}]: find $\pi^*$ that maximizes expected cumulative reward.\\
+\textbf{Discount} [Q4d: \textbf{A}]: $\gamma{<}1$ makes immediate rewards more important.\\
+$\sum_{t=0}^\infty \gamma^t = \frac{1}{1{-}\gamma}$.
+
+\sub{Value Functions}
+$V^\pi(s)$=expected return from $s$ following $\pi$.\\
+$Q^\pi(s,a)$=start at $s$, take $a$, then follow $\pi$.\\
+$V^*(s) = \max_a Q^*(s,a)$. \enspace $\pi^*(s) = \arg\max_a Q^*(s,a)$.
+
+\sub{Bellman Equations [Prac Q7a, PS3 Q4e]}
+\textbf{Fixed $\pi$:} $V^\pi(s) = \sum_{s'} P(s'|s,\pi(s))[R + \gamma V^\pi(s')]$\\
+\textbf{Optimal:} $\boxed{V^*(s) = \max_a \sum_{s'} P(s'|s,a)[R(s,a,s') + \gamma V^*(s')]}$
+
+\sub{Value Iteration [Prac Q2c fill-in: \textbf{I}]}
+Init $V_0{=}0$. Repeat: $V_{k+1}(s) = \max_a \sum_{s'} P[R + \gamma V_k(s')]$.\\
+Extract: $\pi^*(s) = \arg\max_a \sum P[R + \gamma V^*]$.\\
+Cost/iter: $O(|S|^2 |A|)$. \W Supports \textbf{early stopping} (monitor $V$ convergence).
+
+\sub{Policy Iteration [Prac Q2c fill-in: \textbf{J}]}
+\textbf{(a) Evaluation:} solve $V^\pi$ exactly: $O(|S|^3)$ (linear system).\\
+\textbf{(b) Improvement:} $\pi_{new}(s) = \arg\max_a \sum P[R + \gamma V^\pi(s')]$: $O(|S|^2|A|)$.\\
+\W Requires \textbf{full policy eval} before assessing convergence.\\
+Fewer iterations but each costlier. Often \textbf{faster in practice}.
+
+\sub{Matching [Prac Q7a --- 5 pts]}
+\begin{tabular}{@{}l|l@{}}
+\rowcolor{cbg}\textbf{Term} & \textbf{Equation form}\\
+Bellman Eq & $V(s) = \max_a \sum P[R + \gamma V(s')]$\\
+\rowcolor{cbg!40}Value Iter & $V_k(s) = \max_a \sum P[R + \gamma V_k(s')]$\\
+Policy Extract & $\pi(s) = \arg\max_a \sum P[R + \gamma V^\pi(s')]$\\
+\rowcolor{cbg!40}Policy Eval & $V^\pi_{k+1}(s) = \sum P(s'|s,\pi(s))[R + \gamma V^\pi_k(s')]$\\
+Policy Improve & $\pi_{new}(s) = \arg\max_a \sum P[R + \gamma V^{\pi_{old}}(s')]$\\
+\end{tabular}
+
+\sub{Worked Examples [Prac Q7c--d]}
+\textbf{Q-value} (deterministic): $Q(s,a) = R(s,a) + \gamma V(s')$.\\
+Ex: $Q(s,A){=}3{+}0.8{\times}10{=}11$, $Q(s,B){=}2{+}0.8{\times}20{=}18$. Best: \textbf{B}.\\
+\textbf{Self-loop:} $V(s) = R + \gamma V(s)$ \ra $\boxed{V(s) = \frac{R}{1-\gamma}}$.\\
+Ex: $R{=}4, \gamma{=}0.95$\ra $V = 4/0.05 = \mathbf{80}$.\\
+\textbf{Stochastic Q:} $Q(s,a){=}\sum_{s'}P(s'|s,a)[R(s,a,s'){+}\gamma V(s')]$.\\
+Ex: $P(s_1){=}0.7,P(s_2){=}0.3$: $Q{=}0.7[R_1{+}\gamma V_1]+0.3[R_2{+}\gamma V_2]$.\\
+\W Smaller $\gamma$\ra myopic (near-sighted). Larger $\gamma$\ra values future more.
+
+% ═══════════════════════════════════════════════════
+%  IMITATION LEARNING  (PS3 Q5: 9pts, Prac Q2a, Q3c)
+% ═══════════════════════════════════════════════════
+\sect{corange}{IMITATION LEARNING [PS3 Q5: 9pts]}
+
+\sub{Three Approaches [Prac Q2a fill-in]}
+\begin{tabular}{@{}l|l|l@{}}
+\rowcolor{cbg}\textbf{Method} & \textbf{Learns} & \textbf{Fill-in}\\
+BC & Policy $\pi(a|s)$ directly & \textbf{A}\\
+\rowcolor{cbg!40}DMP & Trajectory (attractor sys.) & \textbf{C}\\
+IRL & Reward $R(s)$ & \textbf{B}\\
+\end{tabular}
+
+\sub{Behavioral Cloning}
+Supervised learning: $\pi_\theta(s) \approx \pi^*(s)$.\\
+\W \textbf{Compounding error} [PS3 Q5a: \textbf{A}]: small mistakes\ra unseen states\ra more errors\ra crash. Error grows $O(\varepsilon T^2)$.\\
+\textbf{DAgger}: run learned $\pi$, query expert at visited states, retrain.
+
+\sub{BC vs IRL [PS3 Q5b: \textbf{D}, Q5c: \textbf{C}]}
+\textbf{BC} copies \textbf{actions} directly (supervised). Assumes expert optimal.\\
+\textbf{IRL} infers \textbf{reward function}, then optimizes policy via RL.\\
+IRL more robust, transfers better.\\
+\W Q5c: BC assumes \textbf{expert actions are optimal}; IRL relaxes this.
+
+\sub{DMPs (Dynamic Movement Primitives)}
+$\tau\dot{v} = K(g{-}x) - Dv + (g{-}x_0)f(s)$, \enspace $\tau\dot{s} = -\alpha s$ ($s$: $1 \to 0$).\\
+$f(s) = \frac{\sum w_i \psi_i(s) s}{\sum \psi_i(s)}$. As $s \to 0$: $f \to 0$\ra spring-damper converges to $g$.\\
+Weights learned via linear regression. Temporal/spatial invariance.
+
+\sub{Imitation Challenges [Prac Q3c --- 4 pts]}
+\textbf{1. Compounding error / distribution shift} (see above).\\
+\textbf{2. Multimodal demonstrations:} different demos show different strategies for same state (e.g., go left OR right around obstacle). Unimodal policy (Gaussian)\ra \textbf{averages modes}\ra dangerous (goes straight into obstacle).\\
+Solutions: GMMs, \textbf{Diffusion Policy} (generative, handles multiple modes).
+
+\sub{Monte Carlo [Prac Q2b fill-in]}
+Estimate via \textbf{random sampling} (\textbf{E}) + \textbf{statistical analysis} (\textbf{F}).
+
+% ═══════════════════════════════════════════════════
+%  CONVOLUTION  (Prac Q1c: 3pts)
+% ═══════════════════════════════════════════════════
+\sect{cgreen}{CONVOLUTION [Prac Q1c]}
+
+Slide kernel over image, element-wise multiply, sum\ra 1 output pixel.\\
+$h[m,n] = \sum_{k,l} g[k,l]\,f[m{+}k,n{+}l]$. Output: $(W{-}K{+}1){\times}(H{-}K{+}1)$.\\
+\textbf{Box} $\frac{1}{9}(\begin{smallmatrix}1&1&1\\1&1&1\\1&1&1\end{smallmatrix})$\ra blur.
+\textbf{Sobel V:} $(\begin{smallmatrix}1&0&{-1}\\2&0&{-2}\\1&0&{-1}\end{smallmatrix})$ detects vertical edges.\\
+\textbf{Sobel H:} $(\begin{smallmatrix}1&2&1\\0&0&0\\{-1}&{-2}&{-1}\end{smallmatrix})$ detects horizontal edges.\\
+\textbf{Sharpening:} $2{\times}\text{original} - \text{blurred}$\ra amplifies edges.\\
+Gaussian: $G_\sigma {=} \frac{1}{2\pi\sigma^2}e^{-(x^2{+}y^2)/2\sigma^2}$, smoother blur than box.\\
+\W Prac Q1c kernel: negative top, positive bottom\ra \textbf{horizontal edge detect} (Sobel-H variant)\ra answer shows horizontal edges.\\
+\textbf{Conv ex:} $3{\times}3$ image with Sobel-H center pixel:\\
+$o = (-1)(a_{00}) + (-2)(a_{01}) + (-1)(a_{02}) + (1)(a_{20}) + (2)(a_{21}) + (1)(a_{22})$\\
+Large $|o|$\ra strong horizontal edge. $o{>}0$\ra dark-to-light going down.
+
+% ═══════════════════════════════════════════════════
+%  VALUE ITER vs POLICY ITER  (heavily tested)
+% ═══════════════════════════════════════════════════
+\sect{cpurple}{VI vs PI COMPARISON [PS3 Q4f]}
+
+\begin{tabular}{@{}l|l|l@{}}
+\rowcolor{cbg} & \textbf{Value Iteration} & \textbf{Policy Iteration}\\
+Updates & $V$ values only & $\pi$ and $V$\\
+\rowcolor{cbg!40}Per-iter & $O(|S|^2|A|)$ & $O(|S|^3 + |S|^2|A|)$\\
+\# Iters & Many (slow conv.) & Few (fast conv.)\\
+\rowcolor{cbg!40}Converges to & $V^*$ directly & $\pi^*$ directly\\
+Simplicity & Simpler & More complex\\
+\rowcolor{cbg!40}In practice & --- & Often \textbf{faster}\\
+Early stop & \textbf{Yes} (monitor $V$) & \textbf{No} (need full eval)\\
+\end{tabular}
+
+\vspace{1pt}
+\W VI: one Bellman backup per iteration (approx.).\\
+PI: \textbf{exact} policy eval + greedy improvement, guaranteed to converge in finite steps (finite \# policies).
+
+% ═══════════════════════════════════════════════════
+%  ROTATION & TRIG REFERENCE
+% ═══════════════════════════════════════════════════
+\sect{cblue}{ROTATION \& TRIG REFERENCE}
+
+\sub{2D Rotation Matrix}
+$R(\theta) = \begin{bmatrix} \cos\theta & -\sin\theta \\ \sin\theta & \cos\theta \end{bmatrix}$\enspace
+Rotates point by $\theta$ CCW. $R^{-1}{=}R^T{=}R(-\theta)$.
+
+\sub{3D Elementary Rotation Matrices}
+{\fontsize{5.5}{6.5}\selectfont
+$R_x(\alpha) {=} \begin{bmatrix} 1 & 0 & 0 \\ 0 & c\alpha & -s\alpha \\ 0 & s\alpha & c\alpha \end{bmatrix}$
+$R_y(\beta) {=} \begin{bmatrix} c\beta & 0 & s\beta \\ 0 & 1 & 0 \\ -s\beta & 0 & c\beta \end{bmatrix}$
+$R_z(\gamma) {=} \begin{bmatrix} c\gamma & -s\gamma & 0 \\ s\gamma & c\gamma & 0 \\ 0 & 0 & 1 \end{bmatrix}$
+}\\
+\W $R_y$ has $+s\beta$ top-right, $-s\beta$ bottom-left (opposite of $R_x,R_z$!).\\
+\W Trick: the ``1'' is on the axis you rotate \textbf{about} (x\ra row/col 1, y\ra 2, z\ra 3).
+
+\sub{Rotation Properties}
+$\det(R){=}1$, $R^T R{=}I$, $R^{-1}{=}R^T$. Group: SO(3).\\
+Composition: $R_{total} = R_z \cdot R_y \cdot R_x$ (right-to-left = intrinsic).\\
+\W $R_A \cdot R_B \neq R_B \cdot R_A$ --- rotations \textbf{don't commute!}
+
+\sub{Euler Angles (ZYX convention)}
+Any 3D rotation = $R = R_z(\alpha)\,R_y(\beta)\,R_x(\gamma)$ (yaw-pitch-roll).\\
+\textbf{Yaw} $\alpha$: rotation about $z$ (heading).\\
+\textbf{Pitch} $\beta$: rotation about $y$ (nose up/down).\\
+\textbf{Roll} $\gamma$: rotation about $x$ (tilt left/right).\\
+\W \textbf{Gimbal lock} at pitch $=\pm 90^\circ$: lose 1 DoF (yaw and roll become same axis).
+
+\sub{Axis-Angle (Rodrigues' Formula)}
+Rotate by angle $\theta$ about unit axis $\hat{\omega}{=}[\omega_x,\omega_y,\omega_z]^T$:\\
+$R = I + \sin\theta\,[\hat{\omega}]_\times + (1{-}\cos\theta)\,[\hat{\omega}]_\times^2$\\
+where skew-symmetric: $[\hat{\omega}]_\times {=} \begin{bmatrix} 0 & -\omega_z & \omega_y \\ \omega_z & 0 & -\omega_x \\ -\omega_y & \omega_x & 0 \end{bmatrix}$\\
+Special cases: $\theta{=}0$\ra $R{=}I$. \enspace $\theta{=}\pi$\ra $R{=}2\hat{\omega}\hat{\omega}^T - I$.
+
+\sub{Homogeneous Transform ($4{\times}4$)}
+$T = \begin{bmatrix} R & t \\ 0 & 1 \end{bmatrix}$, \enspace
+$T^{-1} = \begin{bmatrix} R^T & -R^T t \\ 0 & 1 \end{bmatrix}$.\\
+Chain: ${}^AT_C = {}^AT_B \cdot {}^BT_C$.
+
+\sub{Trig Values (no calculator!)}
+\begin{tabular}{@{}l|c|c|c|c|c@{}}
+\rowcolor{cbg}$\theta$ & $0$ & $30$ & $45$ & $60$ & $90$\\
+$\sin$ & 0 & $\frac{1}{2}$ & $\frac{\sqrt{2}}{2}$ & $\frac{\sqrt{3}}{2}$ & 1\\
+\rowcolor{cbg!40}$\cos$ & 1 & $\frac{\sqrt{3}}{2}$ & $\frac{\sqrt{2}}{2}$ & $\frac{1}{2}$ & 0\\
+\end{tabular}\\
+$\sin(-\theta) = -\sin\theta$, $\cos(-\theta) = \cos\theta$.\\
+$\sin(90^\circ) = 1$, $\cos(90^\circ) = 0$, $\sin(-90^\circ) = -1$.
+
+% ═══════════════════════════════════════════════════
+%  KEY DEFINITIONS (fill-in targets)
+% ═══════════════════════════════════════════════════
+\sect{cred}{KEY DEFINITIONS [Fill-in Targets]}
+
+\textbf{EKF} [PS3 Q2b]: Recursive estimator for \textbf{nonlinear} systems; linearizes models via \textbf{Jacobians} to apply Kalman filter updates.\\
+\textbf{Markov} [PS3 Q4a]: Given current state, future is \textbf{independent of history}.\\
+\textbf{IK challenges} [Prac Q4c]: Joint limits, singularities, arm redundancy, multiple solutions, workspace limits.\\
+\textbf{Meas.\ model} [PS3 Q1c]: $P(\text{sensor reading} \mid \text{robot at location})$.\\
+\textbf{Loop closure} [PS3 Q2d]: Re-observing known landmark\ra corrects accumulated drift.\\
+\textbf{C-space} [PS3 Q3d]: Space of all robot configurations (joint angles). Obstacles mapped to C-space.\\
+\textbf{RRT step}: $q_{new} = q_{near} + \varepsilon \cdot \frac{q_{rand} - q_{near}}{\|q_{rand} - q_{near}\|}$.
+
+% ═══════════════════════════════════════════════════
+%  FORMULA QUICK REF
+% ═══════════════════════════════════════════════════
+\sect{cred}{FORMULA QUICK REF}
+
+\textbf{DH:} $T{=}\text{Rot}(x,\alpha)\text{Trans}(x,a)\text{Trans}(z,d)\text{Rot}(z,\theta)$\\
+\textbf{IK:} $c\theta_2{=}\frac{x^2{+}y^2{-}l_1^2{-}l_2^2}{2l_1l_2}$;\; $\theta_1{=}\text{atan2}(y,x){-}\text{atan2}(l_2s_2,l_1{+}l_2c_2)$\\
+\textbf{Camera:} $s[u,v,1]^T{=}K[R|t][X,Y,Z,1]^T$.\; Pose: $\mathbf{C}{=}{-}R^Tt$\\
+\textbf{Bellman:} $V^*{=}\max_a\sum_{s'}P(s'|s,a)[R{+}\gamma V^*(s')]$\\
+\textbf{Q-val:} $Q(s,a){=}R(s,a){+}\gamma V(s')$.\; \textbf{Self-loop:} $V{=}R/(1{-}\gamma)$\\
+\textbf{PF Bayes:} $P(\text{loc}|\text{r}){=}\frac{P(\text{r}|\text{loc})P(\text{loc})}{P(\text{r})}$.\; Meas.\ model $= P(\text{r}|\text{loc})$\\
+\textbf{PF motion:} $x'{=}x{+}d'\cos\Theta'$, $y'{=}y{+}d'\sin\Theta'$ (turn first, then move)\\
+\textbf{SLAM:} EKF $O(n^2)$. Fast $O(Mn)$. EKFs$= M{\times}n$. Fast wins: $M{\ll}n$\\
+\textbf{Stereo:} $Z{=}fB/d$.\; \textbf{FoV:} $2\text{atan}(d/2f)$.\; \textbf{Gear:} $n$:1\ra spd$/n$, trq${\times}n$\\
+\textbf{Gr\"ubler:} $\text{dof}{=}m(N{-}1{-}J){+}\sum f_i$\\
+\textbf{DMP:} $\tau\dot{v}{=}K(g{-}x){-}Dv{+}(g{-}x_0)f(s)$;\; $f{=}\frac{\sum w_i\psi_i s}{\sum\psi_i}$;\; $\tau\dot{s}{=}{-}\alpha s$\\
+\textbf{Kabsch:} $H{=}P^TQ$, svd$\to R{=}V\text{diag}(1,1,\det(VU^T))U^T$, $t{=}\bar{q}{-}R\bar{p}$\\
+\textbf{Singularity:} $\det(J){=}l_1l_2\sin\theta_2{=}0$ at $\theta_2{=}0,\pi$\\
+\textbf{Conv:} $h[m,n]{=}\sum g[k,l]f[m{+}k,n{+}l]$.\; \textbf{Gauss:} $\frac{1}{2\pi\sigma^2}e^{-(x^2{+}y^2)/2\sigma^2}$
+
+\sub{Common Pitfalls \& Exam Tips}
+\W \textbf{DH:} R joint\ra $\theta$ varies; P joint\ra $d$ varies. Don't mix up!\\
+\W \textbf{Camera:} $[R|t]$ transforms world\ra camera, NOT camera pose. Camera position $= -R^Tt$.\\
+\W \textbf{IK:} Always check $|c\theta_2| \le 1$ (reachable?). Two solutions: elbow up/down.\\
+\W \textbf{PF motion:} Robot \textbf{turns first} ($\theta$), \textbf{then moves} ($x,y$). Each particle gets different noise.\\
+\W \textbf{Resampling:} Concentrates particles, does NOT increase total count. Weights reset to $1/N$.\\
+\W \textbf{MDP:} $V^*$ gives value of best action. $Q^*$ gives value of specific action. $\pi^*$ tells you which action.\\
+\W \textbf{VI vs PI:} VI can stop early (check $\Delta V$). PI must finish full evaluation before checking convergence.\\
+\W \textbf{Discount:} $\gamma$ close to 0\ra greedy/myopic. $\gamma$ close to 1\ra values future. $\gamma{=}1$\ra may not converge.\\
+\W \textbf{SLAM:} EKF-SLAM = one big joint state. FastSLAM = factored (particles + small EKFs).\\
+\W \textbf{BC vs IRL:} BC copies actions (fast but brittle). IRL learns \textbf{why} (reward), then finds new policy.
+
+\sub{How to Solve Common Problem Types}
+\textbf{Gr\"ubler:} Count links (incl.\ ground), count joints, identify types\ra plug in.\\
+\textbf{DH table:} Assign frames ($z$=joint axis, $x$=common normal), read off $\alpha,a,d,\theta$.\\
+\textbf{FK:} Plug DH params into $T$ matrix for each joint, multiply ${}^0T_1 \cdot {}^1T_2 \cdots$\\
+\textbf{IK:} Use law of cosines for $\theta_2$, then atan2 for $\theta_1$. Check reachability.\\
+\textbf{Camera proj:} Back-project (need depth!)\ra transform frame\ra project with $K$\ra divide by $Z_c$.\\
+\textbf{PF predict:} Apply motion + noise to each particle independently.\\
+\textbf{PF update:} Weight = how well particle's expected reading matches actual reading.\\
+\textbf{MDP Q-value:} $Q{=}R{+}\gamma V(s')$ if deterministic. $Q{=}\sum P(s')[R{+}\gamma V(s')]$ if stochastic.\\
+\textbf{Self-loop:} $V{=}R{+}\gamma V$\ra $V{=}R/(1{-}\gamma)$. Always check for this pattern!\\
+\textbf{Kabsch:} Center points, compute $H{=}P^TQ$, SVD, assemble $R$, then $t{=}\bar{q}{-}R\bar{p}$.
+
+\end{multicols}
+\end{document}
