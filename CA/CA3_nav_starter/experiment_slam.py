@@ -1,0 +1,407 @@
+#!/usr/bin/env python3
+"""Part A: EKF-SLAM experiments.
+
+A1 - Two trajectory designs (greedy forward vs looping revisit).
+A2 - Noise sensitivity analysis on process and measurement noise.
+
+Usage:
+    python experiment_slam.py
+"""
+
+from __future__ import annotations
+
+import os
+from typing import Any
+
+import matplotlib.pyplot as plt
+import numpy as np
+from matplotlib.patches import Circle, Ellipse
+
+from environment import Environment, RobotSimulator
+from slam import EKFSLAM, get_covariance_ellipse
+
+RESULTS_DIR = os.path.join(os.path.dirname(__file__), "results", "partA")
+os.makedirs(RESULTS_DIR, exist_ok=True)
+
+NUM_STEPS = 500
+SEED = 42
+
+
+# ---------------------------------------------------------------------------
+# Control functions
+# ---------------------------------------------------------------------------
+
+
+def control_greedy_forward(t: int) -> tuple[float, float]:
+    """Path A - L-shaped sweep, each landmark seen roughly once."""
+    if t < 150:
+        return (1.0, 0.0)  # straight east
+    elif t < 170:
+        return (0.3, 0.78)  # turn left ~90 deg
+    elif t < 320:
+        return (1.0, 0.0)  # straight north
+    elif t < 340:
+        return (0.3, 0.78)  # turn left ~90 deg
+    else:
+        return (0.8, 0.0)  # straight west
+
+
+def control_looping_revisit(t: int) -> tuple[float, float]:
+    """Path B - Two orbits so landmarks are observed multiple times."""
+    if t < 50:
+        return (1.0, 0.0)  # straight NE toward cluster
+    elif t < 100:
+        return (1.0, 0.15)  # gentle curve
+    elif t < 350:
+        return (1.0, 0.25)  # tight orbit, full circle(s)
+    elif t < 380:
+        return (1.0, 0.0)  # translate orbit center
+    else:
+        return (1.0, 0.25)  # second orbit
+
+
+# ---------------------------------------------------------------------------
+# Shared SLAM runner
+# ---------------------------------------------------------------------------
+
+
+def run_slam_experiment(
+    control_fn: Any,
+    init_pose: list[float],
+    R: np.ndarray,
+    Q: np.ndarray,
+    num_steps: int = NUM_STEPS,
+    seed: int = SEED,
+) -> dict[str, Any]:
+    """Run a full SLAM experiment and return collected data.
+
+    Args:
+        control_fn: Callable(t) -> (v, omega).
+        init_pose: Initial [x, y, theta].
+        R: 3x3 process noise covariance.
+        Q: 2x2 measurement noise covariance.
+        num_steps: Simulation length.
+        seed: Random seed.
+
+    Returns:
+        Dictionary with true_path, est_path, landmarks, and metric arrays.
+    """
+    np.random.seed(seed)
+    env = Environment(seed=seed)
+    sim = RobotSimulator(env, init_pose, R, Q)
+    ekf = EKFSLAM(init_pose=init_pose, R=R, Q=Q)
+
+    pose_errors: list[float] = []
+    pose_uncertainties: list[float] = []
+    avg_landmark_uncertainties: list[float] = []
+
+    for t in range(num_steps):
+        control = control_fn(t)
+        measurements = sim.step(control)
+        ekf.step(control, measurements, dt=sim.dt)
+
+        # --- metrics at this step ---
+        true_xy = sim.true_pose[:2]
+        est_xy = ekf.get_current_pose()[:2]
+        pose_errors.append(float(np.linalg.norm(true_xy - est_xy)))
+
+        pose_cov = ekf.get_pose_covariance()
+        pose_uncertainties.append(float(np.sqrt(np.trace(pose_cov))))
+
+        lm_covs = ekf.get_landmark_covariances()
+        if lm_covs:
+            avg_landmark_uncertainties.append(
+                float(np.mean([np.trace(c) for c in lm_covs.values()]))
+            )
+        else:
+            avg_landmark_uncertainties.append(0.0)
+
+    return {
+        "env": env,
+        "ekf": ekf,
+        "true_path": sim.get_true_path(),
+        "est_path": ekf.get_estimated_path(),
+        "est_landmarks": ekf.get_estimated_landmarks(),
+        "landmark_covs": ekf.get_landmark_covariances(),
+        "pose_errors": np.array(pose_errors),
+        "pose_uncertainties": np.array(pose_uncertainties),
+        "avg_landmark_uncertainties": np.array(avg_landmark_uncertainties),
+    }
+
+
+# ---------------------------------------------------------------------------
+# Plotting helpers
+# ---------------------------------------------------------------------------
+
+
+def plot_trajectory(
+    ax: plt.Axes,
+    data: dict[str, Any],
+    title: str,
+) -> None:
+    """Plot true vs estimated path with landmark uncertainty ellipses."""
+    env = data["env"]
+    ax.set_title(title, fontsize=12, fontweight="bold")
+    ax.set_xlim(env.x_min, env.x_max)
+    ax.set_ylim(env.y_min, env.y_max)
+    ax.set_xlabel("x [m]")
+    ax.set_ylabel("y [m]")
+    ax.set_aspect("equal")
+    ax.grid(True, alpha=0.3)
+
+    # True obstacles
+    for lm_pos in env.landmarks.values():
+        circle = Circle(
+            (lm_pos[0], lm_pos[1]), env.obstacle_radius, color="gray", alpha=0.3
+        )
+        ax.add_patch(circle)
+
+    # Estimated landmarks with uncertainty
+    for lm_id, lm_pos in data["est_landmarks"].items():
+        cov = data["landmark_covs"][lm_id]
+        ax.plot(lm_pos[0], lm_pos[1], "ro", markersize=5, zorder=5)
+        w, h, angle = get_covariance_ellipse(cov, n_std=2.0)
+        ell = Ellipse(
+            (lm_pos[0], lm_pos[1]),
+            w,
+            h,
+            angle=angle,
+            facecolor="none",
+            edgecolor="red",
+            linewidth=1.2,
+            linestyle="--",
+            alpha=0.7,
+            zorder=4,
+        )
+        ax.add_patch(ell)
+
+    tp = data["true_path"]
+    ep = data["est_path"]
+    ax.plot(tp[:, 0], tp[:, 1], "k-", linewidth=1.0, alpha=0.6, label="True path")
+    ax.plot(ep[:, 0], ep[:, 1], "b--", linewidth=1.0, alpha=0.6, label="Estimated path")
+    ax.legend(loc="upper right", fontsize=8, framealpha=0.9)
+
+
+def plot_metrics(
+    ax_err: plt.Axes,
+    ax_unc: plt.Axes,
+    ax_lm: plt.Axes,
+    data: dict[str, Any],
+    label: str = "",
+    color: str = "tab:blue",
+) -> None:
+    """Plot 3-panel metrics (pose error, pose uncertainty, avg LM uncertainty)."""
+    steps = np.arange(len(data["pose_errors"]))
+
+    ax_err.plot(steps, data["pose_errors"], color=color, linewidth=0.8, label=label)
+    ax_err.set_ylabel("Pose error [m]")
+    ax_err.set_xlabel("Step")
+    ax_err.grid(True, alpha=0.3)
+
+    ax_unc.plot(
+        steps, data["pose_uncertainties"], color=color, linewidth=0.8, label=label
+    )
+    ax_unc.set_ylabel("Pose uncertainty [m]")
+    ax_unc.set_xlabel("Step")
+    ax_unc.grid(True, alpha=0.3)
+
+    ax_lm.plot(
+        steps,
+        data["avg_landmark_uncertainties"],
+        color=color,
+        linewidth=0.8,
+        label=label,
+    )
+    ax_lm.set_ylabel("Avg LM uncertainty")
+    ax_lm.set_xlabel("Step")
+    ax_lm.grid(True, alpha=0.3)
+
+
+# ---------------------------------------------------------------------------
+# A1 - Path design experiment
+# ---------------------------------------------------------------------------
+
+
+def experiment_a1() -> None:
+    """A1: Compare greedy-forward vs looping-revisit trajectories."""
+    print("=" * 60)
+    print("A1: Path Design Experiment")
+    print("=" * 60)
+
+    R = np.diag([0.1, 0.1, np.deg2rad(3.0)]) ** 2
+    Q = np.diag([0.5, np.deg2rad(8.0)]) ** 2
+
+    data_a = run_slam_experiment(control_greedy_forward, [0.0, 0.0, 0.0], R, Q)
+    data_b = run_slam_experiment(control_looping_revisit, [0.0, 0.0, np.pi / 6], R, Q)
+
+    # --- Trajectory comparison figure ---
+    fig, axes = plt.subplots(1, 2, figsize=(16, 7))
+    plot_trajectory(axes[0], data_a, "Path A - Greedy Forward")
+    plot_trajectory(axes[1], data_b, "Path B - Looping Revisit")
+    fig.suptitle("A1: Trajectory Comparison", fontsize=14, fontweight="bold")
+    fig.tight_layout()
+    fig.savefig(os.path.join(RESULTS_DIR, "a1_trajectories.png"), dpi=150)
+    plt.close(fig)
+    print("  Saved a1_trajectories.png")
+
+    # --- Metrics comparison figure ---
+    fig, axes = plt.subplots(3, 1, figsize=(12, 10), sharex=True)
+    for data, label, color in [
+        (data_a, "Greedy Forward", "tab:blue"),
+        (data_b, "Looping Revisit", "tab:orange"),
+    ]:
+        plot_metrics(axes[0], axes[1], axes[2], data, label=label, color=color)
+    for ax in axes:
+        ax.legend(fontsize=9)
+    axes[0].set_title("A1: Metrics Over Time", fontsize=12, fontweight="bold")
+    fig.tight_layout()
+    fig.savefig(os.path.join(RESULTS_DIR, "a1_metrics.png"), dpi=150)
+    plt.close(fig)
+    print("  Saved a1_metrics.png")
+
+    # --- Summary ---
+    for name, data in [("Greedy Forward", data_a), ("Looping Revisit", data_b)]:
+        print(f"\n  {name}:")
+        print(f"    Final pose error:        {data['pose_errors'][-1]:.4f} m")
+        print(f"    Mean pose error:         {np.mean(data['pose_errors']):.4f} m")
+        print(f"    Final pose uncertainty:  {data['pose_uncertainties'][-1]:.4f} m")
+        print(
+            f"    Final avg LM unc:        {data['avg_landmark_uncertainties'][-1]:.4f}"
+        )
+        print(f"    Landmarks observed:      {len(data['est_landmarks'])}")
+
+
+# ---------------------------------------------------------------------------
+# A2 - Noise sensitivity experiment
+# ---------------------------------------------------------------------------
+
+R_LEVELS = {
+    "Low": np.diag([0.05, 0.05, np.deg2rad(1.5)]) ** 2,
+    "Medium": np.diag([0.1, 0.1, np.deg2rad(3.0)]) ** 2,
+    "High": np.diag([0.3, 0.3, np.deg2rad(8.0)]) ** 2,
+}
+
+Q_LEVELS = {
+    "Low": np.diag([0.2, np.deg2rad(3.0)]) ** 2,
+    "Medium": np.diag([0.5, np.deg2rad(8.0)]) ** 2,
+    "High": np.diag([1.5, np.deg2rad(15.0)]) ** 2,
+}
+
+
+def experiment_a2() -> None:
+    """A2: Noise sensitivity analysis using Path B."""
+    print("\n" + "=" * 60)
+    print("A2: Noise Sensitivity Experiment")
+    print("=" * 60)
+
+    init_pose = [0.0, 0.0, np.pi / 6]
+    Q_fixed = Q_LEVELS["Medium"]
+    R_fixed = R_LEVELS["Medium"]
+
+    colors = {"Low": "tab:green", "Medium": "tab:blue", "High": "tab:red"}
+
+    # --- Process noise sweep (R varies, Q fixed) ---
+    print("\n  Process noise sweep (Q fixed at Medium):")
+    r_results: dict[str, dict] = {}
+    for level, R in R_LEVELS.items():
+        r_results[level] = run_slam_experiment(
+            control_looping_revisit, init_pose, R, Q_fixed
+        )
+        print(
+            f"    R={level}: final pose err={r_results[level]['pose_errors'][-1]:.4f}"
+        )
+
+    fig, axes = plt.subplots(3, 1, figsize=(12, 10), sharex=True)
+    for level, data in r_results.items():
+        plot_metrics(
+            axes[0], axes[1], axes[2], data, label=f"R={level}", color=colors[level]
+        )
+    for ax in axes:
+        ax.legend(fontsize=9)
+    axes[0].set_title(
+        "A2: Process Noise Sensitivity (Q fixed)", fontsize=12, fontweight="bold"
+    )
+    fig.tight_layout()
+    fig.savefig(os.path.join(RESULTS_DIR, "a2_process_noise.png"), dpi=150)
+    plt.close(fig)
+    print("  Saved a2_process_noise.png")
+
+    # --- Measurement noise sweep (Q varies, R fixed) ---
+    print("\n  Measurement noise sweep (R fixed at Medium):")
+    q_results: dict[str, dict] = {}
+    for level, Q in Q_LEVELS.items():
+        q_results[level] = run_slam_experiment(
+            control_looping_revisit, init_pose, R_fixed, Q
+        )
+        print(
+            f"    Q={level}: final pose err={q_results[level]['pose_errors'][-1]:.4f}"
+        )
+
+    fig, axes = plt.subplots(3, 1, figsize=(12, 10), sharex=True)
+    for level, data in q_results.items():
+        plot_metrics(
+            axes[0], axes[1], axes[2], data, label=f"Q={level}", color=colors[level]
+        )
+    for ax in axes:
+        ax.legend(fontsize=9)
+    axes[0].set_title(
+        "A2: Measurement Noise Sensitivity (R fixed)", fontsize=12, fontweight="bold"
+    )
+    fig.tight_layout()
+    fig.savefig(os.path.join(RESULTS_DIR, "a2_measurement_noise.png"), dpi=150)
+    plt.close(fig)
+    print("  Saved a2_measurement_noise.png")
+
+    # --- Summary table ---
+    fig, ax_tab = plt.subplots(figsize=(10, 5))
+    ax_tab.axis("off")
+    rows = []
+    for sweep_name, results in [
+        ("Process noise sweep", r_results),
+        ("Measurement noise sweep", q_results),
+    ]:
+        for level, data in results.items():
+            rows.append(
+                [
+                    sweep_name,
+                    level,
+                    f"{np.mean(data['pose_errors']):.4f}",
+                    f"{data['pose_errors'][-1]:.4f}",
+                    f"{data['pose_uncertainties'][-1]:.4f}",
+                    f"{data['avg_landmark_uncertainties'][-1]:.4f}",
+                    str(len(data["est_landmarks"])),
+                ]
+            )
+    col_labels = [
+        "Sweep",
+        "Level",
+        "Mean Pose Err",
+        "Final Pose Err",
+        "Final Pose Unc",
+        "Final Avg LM Unc",
+        "# LMs",
+    ]
+    table = ax_tab.table(
+        cellText=rows, colLabels=col_labels, loc="center", cellLoc="center"
+    )
+    table.auto_set_font_size(False)
+    table.set_fontsize(9)
+    table.scale(1.0, 1.4)
+    ax_tab.set_title(
+        "A2: Noise Sensitivity Summary", fontsize=12, fontweight="bold", pad=20
+    )
+    fig.tight_layout()
+    fig.savefig(os.path.join(RESULTS_DIR, "a2_summary_table.png"), dpi=150)
+    plt.close(fig)
+    print("  Saved a2_summary_table.png")
+
+
+# ---------------------------------------------------------------------------
+# Main
+# ---------------------------------------------------------------------------
+
+if __name__ == "__main__":
+    plt.switch_backend("Agg")  # non-interactive for batch runs
+    experiment_a1()
+    experiment_a2()
+    print("\nAll Part A results saved to", RESULTS_DIR)
