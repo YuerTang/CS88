@@ -47,7 +47,7 @@
 
 % -----------------------------------------------------------------------
 \title{\textbf{Coding Assignment 3: SLAM and Motion Planning}}
-\author{CS\,188: Introduction to Robotics \quad--\quad Winter 2026}
+\author{Yuer Tang}
 \date{}
 
 \begin{document}
@@ -67,39 +67,43 @@ I tested two different control strategies in the same 15-landmark environment:
   \item \textbf{Path~B (Looping Revisit):} Heads northeast, then enters tight circular orbits ($\omega{=}0.25$~rad/s), translates, and does a second orbit. Landmarks near the orbit centres are observed 4--8 times.
 \end{itemize}
 
-\begin{figure}[ht]
+\noindent
+\begin{minipage}[t]{0.57\textwidth}
+\vspace{0pt}
 \centering
-\begin{subfigure}[t]{0.46\textwidth}
+\begin{subfigure}[t]{0.48\textwidth}
   \centering
   \includegraphics[width=\textwidth]{results/partA/a1_path_a.png}
   \caption{Path~A: Greedy Forward.}
 \end{subfigure}
 \hfill
-\begin{subfigure}[t]{0.46\textwidth}
+\begin{subfigure}[t]{0.48\textwidth}
   \centering
   \includegraphics[width=\textwidth]{results/partA/a1_path_b.png}
   \caption{Path~B: Looping Revisit.}
 \end{subfigure}
-\caption{True path (black) vs.\ estimated path (blue dashed) with landmark $2\sigma$ ellipses. Green square = start, red triangle = end.}
+\captionof{figure}{True vs.\ estimated path. Pink/red ellipses = $2\sigma$ landmark uncertainty.}
 \label{fig:a1-traj}
-\end{figure}
-
-\begin{table}[ht]
+\end{minipage}%
+\hfill
+\begin{minipage}[t]{0.40\textwidth}
+\vspace{0pt}
 \centering\small
+\captionof{table}{A1 comparison (500 steps).}
+\label{tab:a1}
+\vspace{2pt}
 \begin{tabular}{@{}lcc@{}}
 \toprule
-\textbf{Metric} & \textbf{Greedy Forward} & \textbf{Looping Revisit} \\
+ & \textbf{Greedy} & \textbf{Loop} \\
 \midrule
-Final pose error & 0.669\,m & 1.204\,m \\
-Mean pose error & 0.837\,m & 0.775\,m \\
-Final pose uncertainty & 0.572\,m & 0.607\,m \\
-Final avg landmark unc. & 0.215 & 0.217 \\
-Landmarks observed & 15/15 & 15/15 \\
+Final pose err & 0.669\,m & 1.204\,m \\
+Mean pose err & 0.837\,m & 0.775\,m \\
+Final pose unc & 0.572\,m & 0.607\,m \\
+Avg LM unc & 0.215 & 0.217 \\
+LMs observed & 15/15 & 15/15 \\
 \bottomrule
 \end{tabular}
-\caption{A1 trajectory comparison (500 steps, medium noise).}
-\label{tab:a1}
-\end{table}
+\end{minipage}
 
 Greedy Forward has a lower \emph{final} pose error (0.669 vs.\ 1.204\,m), but Looping has a lower \emph{mean} error (0.775 vs.\ 0.837\,m). This is because the looping path keeps re-observing landmarks, which triggers EKF corrections that pull the estimate back toward truth. The greedy path drifts during long straight segments but happens to end near landmarks that anchor the final estimate. Both paths observe all 15 landmarks, so final landmark uncertainties are nearly identical ($\approx 0.215$).
 
@@ -110,9 +114,9 @@ Under Path~A, ellipses shrink when a landmark is first observed but stay the sam
 
 \begin{figure}[ht]
 \centering
-\includegraphics[width=\textwidth]{results/partA/a1_snapshots_path_a.png}\\[2pt]
-\includegraphics[width=\textwidth]{results/partA/a1_snapshots_path_b.png}
-\caption{Uncertainty snapshots. \textit{Top:} Path~A, ellipses stay fixed after first observation. \textit{Bottom:} Path~B, ellipses collapse with repeated re-observation. Landmarks far from the orbit (e.g.\ top-right) keep larger ellipses.}
+\includegraphics[width=0.92\textwidth]{results/partA/a1_snapshots_path_a.png}\\[1pt]
+\includegraphics[width=0.92\textwidth]{results/partA/a1_snapshots_path_b.png}
+\caption{Uncertainty snapshots. \textit{Top:} Path~A, ellipses stay fixed after first observation. \textit{Bottom:} Path~B, ellipses collapse with repeated re-observation.}
 \label{fig:snapshots}
 \end{figure}
 
@@ -123,36 +127,44 @@ I used Path~B for all noise experiments because it is the stronger baseline.
 
 \begin{table}[ht]
 \centering\small
-\begin{tabular}{@{}lccc@{\qquad}lccc@{}}
+\begin{tabular}{@{}lcccc@{\quad}lcccc@{}}
 \toprule
-\textbf{R Level} & $\sigma_{xy}$ & $\sigma_\theta$ & \textbf{Pose Err}
-& \textbf{Q Level} & $\sigma_r$ & $\sigma_b$ & \textbf{Pose Err} \\
+\textbf{R Level} & \textbf{Pose Err} & \textbf{LM Err} & \textbf{Pose Unc} & \textbf{LM Unc}
+& \textbf{Q Level} & \textbf{Pose Err} & \textbf{LM Err} & \textbf{Pose Unc} & \textbf{LM Unc} \\
 \midrule
-Low & 0.05 & $1.5^\circ$ & 0.278\,m & Low & 0.2 & $3.0^\circ$ & 1.263\,m \\
-Med & 0.10 & $3.0^\circ$ & 1.204\,m & Med & 0.5 & $8.0^\circ$ & 1.204\,m \\
-High & 0.30 & $8.0^\circ$ & 1.857\,m & High & 1.5 & $15.0^\circ$ & 1.351\,m \\
+Low  & 0.278 & 0.309 & 0.452 & 0.167 & Low  & 1.263 & 0.793 & 0.453 & 0.126 \\
+Med  & 1.204 & 0.772 & 0.607 & 0.217 & Med  & 1.204 & 0.772 & 0.607 & 0.217 \\
+High & 1.857 & 1.124 & 0.861 & 0.384 & High & 1.351 & 0.875 & 0.876 & 0.457 \\
 \bottomrule
 \end{tabular}
-\caption{Noise sensitivity. Left: varying process noise $\mb{R}$ (Q fixed). Right: varying measurement noise $\mb{Q}$ (R fixed).}
+\caption{Noise sensitivity (all in metres). Left: varying process noise $\mb{R}$ (Q fixed at Med). Right: varying measurement noise $\mb{Q}$ (R fixed at Med). Pose/LM Err = position error. Pose/LM Unc = $\sqrt{\mathrm{trace}(\mb{P})}$.}
 \label{tab:a2}
 \end{table}
 
-\textbf{Process noise is far more damaging.} Increasing R-std by $6\times$ causes $6.7\times$ more error, while increasing Q-std by $7.5\times$ causes only $1.1\times$ more error. Process noise corrupts the robot state at every predict step (500 total), so drift accumulates between observations. Measurement noise only degrades the quality of individual corrections and gets averaged out by repeated observations. Even under high measurement noise, the looping path stays at 1.351\,m error. This confirms that revisiting landmarks gives built-in protection against sensor noise.
+\textbf{Pose accuracy:} Increasing process noise from Low to High raises pose error from 0.278 to 1.857\,m ($6.7\times$). Increasing measurement noise over the same range only raises it from 1.263 to 1.351\,m ($1.1\times$).
+
+\textbf{Map accuracy:} Landmark position error follows the same pattern. Process noise: 0.309 to 1.124\,m ($3.6\times$ worse). Measurement noise: 0.793 to 0.875\,m ($1.1\times$). Process noise corrupts the robot pose, which in turn corrupts every landmark update that depends on it.
+
+\textbf{Overall uncertainty:} Pose uncertainty grows from 0.452 to 0.861\,m under high process noise, and from 0.453 to 0.876\,m under high measurement noise. Here the effect is similar because the EKF correctly inflates its uncertainty estimate in both cases. Landmark uncertainty grows more under measurement noise (0.126 to 0.457) than process noise (0.167 to 0.384), because noisy sensors directly degrade the observation model used to update landmarks.
+
+\textbf{Process noise is far more damaging} because it corrupts the robot state at every predict step (500 total), so drift accumulates between observations. Measurement noise only degrades the quality of individual corrections and gets averaged out by repeated observations.
+
+\textbf{Does the looping path hold up?} Even under high process noise, the looping path stays at 1.857\,m, compared to what would be unbounded drift without any observations. Under high measurement noise it stays at 1.351\,m. The looping strategy gives built-in protection because re-observing landmarks keeps correcting the estimate. The path does not break down under any noise level tested.
 
 \begin{figure}[ht]
 \centering
-\begin{subfigure}[t]{0.48\textwidth}
+\begin{subfigure}[t]{0.46\textwidth}
   \centering
   \includegraphics[width=\textwidth]{results/partA/a2_process_noise.png}
   \caption{Process noise sweep ($\mb{Q}$ fixed).}
 \end{subfigure}
 \hfill
-\begin{subfigure}[t]{0.48\textwidth}
+\begin{subfigure}[t]{0.46\textwidth}
   \centering
   \includegraphics[width=\textwidth]{results/partA/a2_measurement_noise.png}
   \caption{Measurement noise sweep ($\mb{R}$ fixed).}
 \end{subfigure}
-\caption{A2 noise sensitivity. Higher process noise (left, red) is much worse across all metrics. Measurement noise (right) has a smaller effect.}
+\caption{A2 noise sensitivity. Process noise (left) is far more damaging than measurement noise (right).}
 \label{fig:a2-noise}
 \end{figure}
 
@@ -165,12 +177,26 @@ High & 0.30 & $8.0^\circ$ & 1.857\,m & High & 1.5 & $15.0^\circ$ & 1.351\,m \\
   \item \textbf{Scenario~1 (Open):} Obstacle radius 0.8, start$=[1,1]$, goal$=[19,1]$. Wide gaps between obstacles.
   \item \textbf{Scenario~2 (Constrained):} Obstacle radius 1.0, start$=[1,1]$, goal$=[17,17]$. Tight passages.
 \end{itemize}
-\textbf{Prediction:} PRM should give shorter paths (A* on roadmap) but be slower. RRT may struggle with narrow passages but should be faster.
+\textbf{Why PRM suits open environments.} In open space, uniform sampling easily covers the free space, producing a dense roadmap (\cref{fig:b1-open}, left). A* then finds a near-optimal path through this graph. The upfront cost of building the full roadmap is worthwhile because the resulting path quality is high, and the roadmap can be reused for multiple queries.
+
+\textbf{Why RRT suits constrained environments.} In tight passages, PRM wastes many samples in open areas while struggling to place enough nodes inside narrow corridors. RRT grows incrementally from the start toward the goal, so it only explores where needed (\cref{fig:b1-constrained}, right). Its step-by-step extension naturally threads through gaps without requiring dense coverage of the whole map. RRT is also much faster, which matters in constrained settings where you may need to replan.
 
 \begin{figure}[ht]
 \centering
-\includegraphics[width=0.6\textwidth]{results/partB/b1_constrained.png}
-\caption{Constrained scenario. PRM (left) and RRT (right) with obstacle radius 1.0.}
+\begin{subfigure}[t]{0.48\textwidth}
+  \centering
+  \includegraphics[width=\textwidth]{results/partB/b1_open.png}
+  \caption{Open (radius 0.8). PRM builds a dense roadmap; RRT grows toward the goal.}
+  \label{fig:b1-open}
+\end{subfigure}
+\hfill
+\begin{subfigure}[t]{0.48\textwidth}
+  \centering
+  \includegraphics[width=\textwidth]{results/partB/b1_constrained.png}
+  \caption{Constrained (radius 1.0). RRT threads through narrow gaps with fewer nodes.}
+  \label{fig:b1-constrained}
+\end{subfigure}
+\caption{B1 scenarios. Blue = roadmap/tree edges, green = solution path. Each panel shows PRM (left) and RRT (right).}
 \label{fig:b1}
 \end{figure}
 
@@ -192,70 +218,63 @@ Avg nodes & 500 & 217 \\
 \label{tab:b2}
 \end{table}
 
-Both achieve 100\% success. PRM produces 15\% shorter paths because A* finds the optimal route on the roadmap. RRT is $26\times$ faster because it does not build a full graph. The RRT paths zigzag visibly (\cref{fig:b1}, right) because each extension steps toward a random sample. PRM's A* finds the shortest graph path through dense collision-free nodes. This is the core trade-off: PRM gives better paths but costs more time. RRT is fast but paths need post-processing.
+Both achieve 100\% success. PRM produces 15\% shorter paths because A* finds the optimal route on the roadmap. RRT is $26\times$ faster because it does not build a full graph. The RRT paths zigzag visibly (\cref{fig:b1-constrained}, right) because each extension steps toward a random sample. PRM's A* finds the shortest graph path through dense collision-free nodes. This is the core trade-off: PRM gives better paths but costs more time. RRT is fast but paths need post-processing.
 
 \subsection{B3.\ Parameter Studies}
 
-\begin{table}[ht]
-\centering\small
-\begin{tabular}{@{}lcc@{\qquad\qquad}lcc@{}}
-\toprule
-\multicolumn{3}{c}{\textbf{PRM: n\_samples}} & \multicolumn{3}{c}{\textbf{RRT: goal\_sample\_rate}} \\
-\cmidrule(r){1-3} \cmidrule(l){4-6}
-\texttt{n\_samples} & Succ. & Avg Len & \texttt{goal\_rate} & Succ. & Avg Len \\
-\midrule
-100 & 100\% & 25.17\,m & 0.0 & 95\% & 29.97\,m \\
-200 & 100\% & 24.85\,m & 0.1 & 100\% & 28.72\,m \\
-400 & 100\% & 24.57\,m & 0.3 & 100\% & 28.10\,m \\
-800 & 100\% & 24.27\,m & 0.7 & 100\% & 26.84\,m \\
-\bottomrule
-\end{tabular}
-\caption{B3 parameter studies. PRM: $8\times$ more samples gives only 3.6\% shorter paths. RRT: goal bias is the strongest factor.}
-\label{tab:b3}
-\end{table}
+\cref{fig:b3} shows path length (left) and planning time (right) for all three parameter sweeps. Success rate is 100\% in all cases except RRT with zero goal bias (95\%).
 
-\textbf{PRM:} Going from 100 to 800 samples only shortens paths by 3.6\%. The roadmap is dense enough at 200--400 nodes. More samples just add planning time.
+\paragraph{PRM: n\_samples.}
+Path length decreases from 25.82\,m (50 samples) to 24.27\,m (800), a 6\% improvement. Most of the gain happens between 50 and 200; going from 200 to 800 only saves 2.4\%. Planning time grows from 0.28\,s to 2.90\,s because building the roadmap is $O(n^2)$. Beyond 200--400 samples, the cost is not worth the diminishing path improvement.
 
-\textbf{RRT step\_size:} Minimal effect (28.40--28.98\,m across 0.2--1.0). Smaller steps avoid obstacles better but need more iterations.
+\paragraph{RRT: step\_size.}
+Path length increases slightly from 28.40\,m (0.2) to 29.59\,m (2.0) because larger steps overshoot and create coarser paths. Planning time drops from 0.30\,s to 0.016\,s because fewer iterations are needed. In narrow passages, large steps risk jumping over valid corridors. For this environment, 0.5 is a good balance.
 
-\textbf{RRT goal\_sample\_rate:} This is the most impactful parameter. Zero bias drops success to 95\% because the tree explores randomly. A 0.7 bias yields 10\% shorter paths by steering growth toward the goal. High bias works here because the direct route is mostly clear. In cluttered environments, high bias would waste iterations trying to extend through blocked areas.
+\paragraph{RRT: goal\_sample\_rate.}
+This is the most impactful parameter. With zero bias, success drops to 95\% and planning takes 1.62\,s because the tree explores randomly. Even 0.05 bias fixes success to 100\% and cuts time to 0.08\,s. Higher bias (0.5--0.7) shortens paths from 28.5\,m to 26.8\,m by steering growth toward the goal. High bias works here because the direct route is mostly clear. In more cluttered environments, high bias would hurt because the tree would repeatedly try to extend through blocked areas.
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=0.78\textwidth]{results/partB/b3_combined.png}
+\caption{B3 parameter studies. Left: path length. Right: planning time. Top: PRM n\_samples. Middle: RRT step\_size. Bottom: RRT goal\_sample\_rate.}
+\label{fig:b3}
+\end{figure}
 
 % ===================================================================
 \section{Part C: Improving PRM and RRT}
 % ===================================================================
 
-\textbf{Improvement: path shortcutting.}
-I added a post-processing step to both planners. For 200 iterations, randomly pick two non-adjacent waypoints $i, j$. If the straight line between them is collision-free, remove all waypoints in between. This targets the main weakness of both planners: PRM paths follow graph edges that may detour, and RRT paths have many small incremental steps.
+\textbf{What I changed.}
+I added a \textbf{path shortcutting} post-processing step to both planners. After a path is found, the algorithm randomly picks two non-adjacent waypoints $w_i, w_j$ and checks if the straight line between them is collision-free. If so, all intermediate waypoints are removed. This is repeated for 200 iterations. The motivation is that PRM paths follow discrete graph edges that may detour around sampled nodes, and RRT paths consist of many tiny incremental steps ($\le 0.5$\,m each) that zigzag toward the goal. Shortcutting replaces these redundant segments with direct lines.
 
-\noindent
-\begin{minipage}[t]{0.42\textwidth}
-\vspace{0pt}
+\textbf{Experiment.}
+I tested on the constrained scenario from B2 (obstacle radius 1.0, start$=[1,1]$, goal$=[17,17]$), running 20 trials per planner with the same B2 parameters. This scenario has tight passages where detours are costly, so shortcutting should make a visible difference.
+
+\begin{table}[ht]
 \centering\small
-\captionof{table}{Shortcutting results (20 trials).}
-\label{tab:c}
-\vspace{2pt}
-\begin{tabular}{@{}lcccc@{}}
+\begin{tabular}{@{}lccccccc@{}}
 \toprule
- & \textbf{Before} & \textbf{After} & \textbf{Len $\Delta$} & \textbf{WP $\Delta$} \\
+ & \textbf{Success} & \textbf{Len Before} & \textbf{Len After} & \textbf{Len $\Delta$} & \textbf{WP $\Delta$} & \textbf{Plan [s]} & \textbf{Total [s]} \\
 \midrule
-PRM & 24.50\,m & 24.03\,m & $-2.0\%$ & $-69.5\%$ \\
-RRT & 28.72\,m & 24.46\,m & $-14.8\%$ & $-90.9\%$ \\
+PRM & 100\% & 24.50\,m & 24.03\,m & $-2.0\%$ & $-69\%$ & 1.714 & 1.868 \\
+RRT & 100\% & 28.72\,m & 24.46\,m & $-14.8\%$ & $-91\%$ & 0.068 & 0.171 \\
 \bottomrule
 \end{tabular}
-\end{minipage}%
-\hfill
-\begin{minipage}[t]{0.55\textwidth}
-\vspace{0pt}
+\caption{Shortcutting results (20 trials). Plan = planning time only. Total = planning + shortcutting.}
+\label{tab:c}
+\end{table}
+
+\begin{figure}[ht]
 \centering
-\includegraphics[width=\textwidth]{results/partC/c_before_after.png}
-\captionof{figure}{Before (blue) vs.\ after (green) shortcutting. RRT (right) shows large simplification.}
+\includegraphics[width=0.72\textwidth]{results/partC/c_before_after.png}
+\caption{Before (blue) vs.\ after (green) shortcutting. RRT (right) shows dramatic simplification.}
 \label{fig:c}
-\end{minipage}
+\end{figure}
 
-\vspace{4pt}
-RRT benefits the most: 14.8\% shorter paths and 91\% fewer waypoints, because its small incremental steps are easy to shortcut into long straight segments. PRM improves less in length ($-2.0\%$) since A* already gives near-optimal paths, but still drops 70\% of waypoints. After shortcutting, both planners produce paths around 24\,m, which is likely close to the true shortest collision-free path. This means the planner choice matters less once post-processing is applied. In practice, RRT ($26\times$ faster) combined with shortcutting can match PRM's path quality at much lower cost.
+RRT benefits the most: 14.8\% shorter and 91\% fewer waypoints, since its many small steps are easy to collapse. PRM improves less in length ($-2.0\%$) since A* already gives near-optimal graph paths, but drops 69\% of waypoints. After shortcutting, both converge to ${\sim}24$\,m, likely near the true optimum.
 
-\subsection*{Use of AI Tools}
-{\small I used Claude Code to write experiment scripts and plotting code. I designed the experiments, verified outputs, and wrote all analysis myself.}
+Shortcutting adds only 0.15\,s (PRM) and 0.10\,s (RRT) to the total time. RRT + shortcutting takes 0.171\,s total and produces 24.46\,m paths, while PRM alone takes 1.714\,s for 24.50\,m paths. So RRT + shortcutting matches PRM quality at $10\times$ lower cost. This eliminates RRT's main weakness (path quality) while preserving its strength (speed).
+
+\vspace{2pt}\noindent\textbf{Use of AI Tools.} {\small I used Claude Code to write experiment scripts and plotting code. I designed the experiments, verified outputs, and wrote all analysis myself.}
 
 \end{document}

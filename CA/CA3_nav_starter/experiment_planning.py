@@ -76,6 +76,7 @@ def run_planner(
         "length": length,
         "time_s": elapsed,
         "nodes": n_nodes,
+        "planner": planner,
     }
 
 
@@ -131,6 +132,47 @@ def experiment_b1() -> None:
             ax = axes[idx]
             draw_env(ax, env)
             result = run_planner(cls, env, start, goal, seed=SEED, **kw)
+            planner = result["planner"]
+
+            # Draw roadmap / tree structure
+            if isinstance(planner, PRM):
+                # Draw roadmap edges
+                nodes = planner.nodes
+                n_nodes = len(nodes)
+                for i, neighbors in planner.edges.items():
+                    if i >= n_nodes:
+                        continue
+                    for j in neighbors:
+                        if j >= n_nodes:
+                            continue
+                        if j > i:  # avoid drawing each edge twice
+                            ax.plot(
+                                [nodes[i][0], nodes[j][0]],
+                                [nodes[i][1], nodes[j][1]],
+                                "b-", linewidth=0.3, alpha=0.25, zorder=2,
+                            )
+                # Draw roadmap nodes
+                node_arr = np.array(nodes)
+                ax.scatter(
+                    node_arr[:, 0], node_arr[:, 1],
+                    s=4, c="steelblue", alpha=0.4, zorder=3, label="Roadmap",
+                )
+            else:
+                # Draw RRT tree branches
+                nodes = planner.nodes
+                for child_idx, parent_idx in planner.parents.items():
+                    if parent_idx is not None:
+                        ax.plot(
+                            [nodes[child_idx][0], nodes[parent_idx][0]],
+                            [nodes[child_idx][1], nodes[parent_idx][1]],
+                            "b-", linewidth=0.3, alpha=0.25, zorder=2,
+                        )
+                # Draw tree nodes
+                node_arr = np.array(nodes)
+                ax.scatter(
+                    node_arr[:, 0], node_arr[:, 1],
+                    s=4, c="steelblue", alpha=0.4, zorder=3, label="Tree",
+                )
 
             if result["success"]:
                 p = result["path"]
@@ -238,25 +280,33 @@ def _run_param_study(
     fixed_kwargs: dict[str, Any],
     n_trials: int = 20,
 ) -> dict[str, list[float]]:
-    """Sweep one parameter and aggregate success rate + avg path length."""
+    """Sweep one parameter and aggregate success rate, path length, and time."""
     success_rates: list[float] = []
     avg_lengths: list[float] = []
+    avg_times: list[float] = []
 
     for val in param_values:
         kw = {**fixed_kwargs, param_name: val}
         successes = 0
         lengths: list[float] = []
+        times: list[float] = []
 
         for i in range(n_trials):
             res = run_planner(planner_cls, env, start, goal, seed=SEED + i, **kw)
+            times.append(res["time_s"])
             if res["success"]:
                 successes += 1
                 lengths.append(res["length"])
 
         success_rates.append(successes / n_trials * 100)
         avg_lengths.append(np.mean(lengths) if lengths else float("nan"))
+        avg_times.append(np.mean(times))
 
-    return {"success_rates": success_rates, "avg_lengths": avg_lengths}
+    return {
+        "success_rates": success_rates,
+        "avg_lengths": avg_lengths,
+        "avg_times": avg_times,
+    }
 
 
 def experiment_b3(n_trials: int = 20) -> None:
@@ -269,77 +319,92 @@ def experiment_b3(n_trials: int = 20) -> None:
     start = np.array([1.0, 1.0])
     goal = np.array([17.0, 17.0])
 
-    studies = [
-        {
-            "title": "PRM: n_samples",
-            "cls": PRM,
-            "param": "n_samples",
-            "values": [100, 200, 400, 800],
-            "fixed": {"k_neighbors": 10},
-        },
-        {
-            "title": "RRT: step_size",
-            "cls": RRT,
-            "param": "step_size",
-            "values": [0.2, 0.5, 1.0],
-            "fixed": {"max_iter": 5000, "goal_sample_rate": 0.1},
-        },
-        {
-            "title": "RRT: goal_sample_rate",
-            "cls": RRT,
-            "param": "goal_sample_rate",
-            "values": [0.0, 0.1, 0.3, 0.7],
-            "fixed": {"max_iter": 5000, "step_size": 0.5},
-        },
-    ]
+    # ---- PRM: n_samples ----
+    prm_vals = [50, 100, 200, 400, 800]
+    print(f"\n  PRM n_samples sweep: {prm_vals}")
+    prm_out = _run_param_study(
+        PRM, env, start, goal, "n_samples", prm_vals,
+        {"k_neighbors": 10}, n_trials=n_trials,
+    )
+    for v, sr, al, at in zip(
+        prm_vals, prm_out["success_rates"],
+        prm_out["avg_lengths"], prm_out["avg_times"],
+    ):
+        print(f"    n_samples={v}: success={sr:.0f}%  len={al:.2f}  time={at:.3f}s")
 
-    fig, axes = plt.subplots(len(studies), 2, figsize=(12, 4 * len(studies)))
+    # ---- RRT: step_size ----
+    step_vals = [0.2, 0.5, 1.0, 2.0]
+    print(f"\n  RRT step_size sweep: {step_vals}")
+    step_out = _run_param_study(
+        RRT, env, start, goal, "step_size", step_vals,
+        {"max_iter": 5000, "goal_sample_rate": 0.1}, n_trials=n_trials,
+    )
+    for v, sr, al, at in zip(
+        step_vals, step_out["success_rates"],
+        step_out["avg_lengths"], step_out["avg_times"],
+    ):
+        print(f"    step_size={v}: success={sr:.0f}%  len={al:.2f}  time={at:.3f}s")
 
-    for row, study in enumerate(studies):
-        print(f"\n  {study['title']} sweep: {study['values']}")
-        out = _run_param_study(
-            study["cls"],
-            env,
-            start,
-            goal,
-            study["param"],
-            study["values"],
-            study["fixed"],
-            n_trials=n_trials,
-        )
+    # ---- RRT: goal_sample_rate ----
+    goal_vals = [0.0, 0.05, 0.1, 0.3, 0.5, 0.7]
+    print(f"\n  RRT goal_sample_rate sweep: {goal_vals}")
+    goal_out = _run_param_study(
+        RRT, env, start, goal, "goal_sample_rate", goal_vals,
+        {"max_iter": 5000, "step_size": 0.5}, n_trials=n_trials,
+    )
+    for v, sr, al, at in zip(
+        goal_vals, goal_out["success_rates"],
+        goal_out["avg_lengths"], goal_out["avg_times"],
+    ):
+        print(f"    goal_rate={v}: success={sr:.0f}%  len={al:.2f}  time={at:.3f}s")
 
-        x_vals = study["values"]
+    # ---- Combined 3x2 figure: path length + planning time ----
+    fig, axes = plt.subplots(3, 2, figsize=(12, 11))
 
-        ax_sr = axes[row, 0]
-        ax_sr.bar(range(len(x_vals)), out["success_rates"], color="steelblue")
-        ax_sr.set_xticks(range(len(x_vals)))
-        ax_sr.set_xticklabels([str(v) for v in x_vals])
-        ax_sr.set_ylabel("Success rate [%]")
-        ax_sr.set_xlabel(study["param"])
-        ax_sr.set_title(f"{study['title']} - Success Rate")
-        ax_sr.set_ylim(0, 105)
-        ax_sr.grid(True, alpha=0.3, axis="y")
+    # Row 0: PRM n_samples
+    axes[0, 0].plot(prm_vals, prm_out["avg_lengths"], "o-", color="coral", linewidth=2)
+    axes[0, 0].set_ylabel("Avg path length [m]")
+    axes[0, 0].set_xlabel("n_samples")
+    axes[0, 0].set_title("PRM: n_samples vs Path Length")
+    axes[0, 0].grid(True, alpha=0.3)
 
-        ax_len = axes[row, 1]
-        valid = [(v, l) for v, l in zip(x_vals, out["avg_lengths"]) if not np.isnan(l)]
-        if valid:
-            vv, ll = zip(*valid)
-            ax_len.bar(range(len(vv)), ll, color="coral")
-            ax_len.set_xticks(range(len(vv)))
-            ax_len.set_xticklabels([str(v) for v in vv])
-        ax_len.set_ylabel("Avg path length [m]")
-        ax_len.set_xlabel(study["param"])
-        ax_len.set_title(f"{study['title']} - Avg Path Length")
-        ax_len.grid(True, alpha=0.3, axis="y")
+    axes[0, 1].plot(prm_vals, prm_out["avg_times"], "s-", color="forestgreen", linewidth=2)
+    axes[0, 1].set_ylabel("Avg planning time [s]")
+    axes[0, 1].set_xlabel("n_samples")
+    axes[0, 1].set_title("PRM: n_samples vs Planning Time")
+    axes[0, 1].grid(True, alpha=0.3)
 
-        for v, sr, al in zip(x_vals, out["success_rates"], out["avg_lengths"]):
-            print(f"    {study['param']}={v}: success={sr:.0f}%  avg_len={al:.2f}")
+    # Row 1: RRT step_size
+    axes[1, 0].plot(step_vals, step_out["avg_lengths"], "o-", color="coral", linewidth=2)
+    axes[1, 0].set_ylabel("Avg path length [m]")
+    axes[1, 0].set_xlabel("step_size")
+    axes[1, 0].set_title("RRT: step_size vs Path Length")
+    axes[1, 0].grid(True, alpha=0.3)
+
+    axes[1, 1].plot(step_vals, step_out["avg_times"], "s-", color="forestgreen", linewidth=2)
+    axes[1, 1].set_ylabel("Avg planning time [s]")
+    axes[1, 1].set_xlabel("step_size")
+    axes[1, 1].set_title("RRT: step_size vs Planning Time")
+    axes[1, 1].grid(True, alpha=0.3)
+
+    # Row 2: RRT goal_sample_rate
+    axes[2, 0].plot(goal_vals, goal_out["avg_lengths"], "o-", color="coral", linewidth=2)
+    axes[2, 0].set_ylabel("Avg path length [m]")
+    axes[2, 0].set_xlabel("goal_sample_rate")
+    axes[2, 0].set_title("RRT: goal_sample_rate vs Path Length")
+    axes[2, 0].grid(True, alpha=0.3)
+
+    axes[2, 1].plot(goal_vals, goal_out["avg_times"], "s-", color="forestgreen", linewidth=2)
+    axes[2, 1].set_ylabel("Avg planning time [s]")
+    axes[2, 1].set_xlabel("goal_sample_rate")
+    axes[2, 1].set_title("RRT: goal_sample_rate vs Planning Time")
+    axes[2, 1].grid(True, alpha=0.3)
 
     fig.suptitle("B3: Parameter Studies", fontsize=14, fontweight="bold")
     fig.tight_layout()
-    fig.savefig(os.path.join(RESULTS_DIR, "b3_parameter_studies.png"), dpi=150)
+    fig.savefig(os.path.join(RESULTS_DIR, "b3_combined.png"), dpi=150)
     plt.close(fig)
-    print("  Saved b3_parameter_studies.png")
+    print("  Saved b3_combined.png")
 
 
 # ---------------------------------------------------------------------------

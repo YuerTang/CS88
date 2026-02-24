@@ -11,6 +11,7 @@ Usage:
 from __future__ import annotations
 
 import os
+import time
 from typing import Any
 
 import matplotlib.pyplot as plt
@@ -71,6 +72,7 @@ def experiment_c() -> None:
     goal = np.array([17.0, 17.0])
 
     records: dict[str, list[dict[str, Any]]] = {"PRM": [], "RRT": []}
+    n_success = {"PRM": 0, "RRT": 0}
 
     for i in range(N_TRIALS):
         seed_i = SEED + i
@@ -78,11 +80,16 @@ def experiment_c() -> None:
 
         # PRM
         prm = PRM(env, n_samples=500, k_neighbors=10)
+        t0 = time.perf_counter()
         prm.build_roadmap()
         prm_path = prm.plan(start, goal)
+        plan_time = time.perf_counter() - t0
         if prm_path is not None:
+            n_success["PRM"] += 1
             rng = np.random.RandomState(seed_i)
+            t1 = time.perf_counter()
             prm_short = shortcut_path(prm_path, env, max_iterations=200, rng=rng)
+            short_time = time.perf_counter() - t1
             records["PRM"].append(
                 {
                     "original": prm_path,
@@ -91,16 +98,25 @@ def experiment_c() -> None:
                     "len_after": path_length(prm_short),
                     "wp_before": len(prm_path),
                     "wp_after": len(prm_short),
+                    "plan_time": plan_time,
+                    "short_time": short_time,
+                    "total_time": plan_time + short_time,
+                    "nodes": len(prm.nodes),
                 }
             )
 
         # RRT
         np.random.seed(seed_i)
         rrt = RRT(env, max_iter=5000, step_size=0.5, goal_sample_rate=0.1)
+        t0 = time.perf_counter()
         rrt_path = rrt.plan(start, goal, goal_tolerance=0.5)
+        plan_time = time.perf_counter() - t0
         if rrt_path is not None:
+            n_success["RRT"] += 1
             rng = np.random.RandomState(seed_i)
+            t1 = time.perf_counter()
             rrt_short = shortcut_path(rrt_path, env, max_iterations=200, rng=rng)
+            short_time = time.perf_counter() - t1
             records["RRT"].append(
                 {
                     "original": rrt_path,
@@ -109,6 +125,10 @@ def experiment_c() -> None:
                     "len_after": path_length(rrt_short),
                     "wp_before": len(rrt_path),
                     "wp_after": len(rrt_short),
+                    "plan_time": plan_time,
+                    "short_time": short_time,
+                    "total_time": plan_time + short_time,
+                    "nodes": len(rrt.nodes),
                 }
             )
 
@@ -157,41 +177,52 @@ def experiment_c() -> None:
         recs = records[name]
         if not recs:
             continue
+        sr = n_success[name] / N_TRIALS * 100
         lb = np.mean([r["len_before"] for r in recs])
         la = np.mean([r["len_after"] for r in recs])
+        pct_len = (lb - la) / lb * 100 if lb > 0 else 0
         wb = np.mean([r["wp_before"] for r in recs])
         wa = np.mean([r["wp_after"] for r in recs])
-        pct_len = (lb - la) / lb * 100 if lb > 0 else 0
         pct_wp = (wb - wa) / wb * 100 if wb > 0 else 0
+        avg_plan = np.mean([r["plan_time"] for r in recs])
+        avg_short = np.mean([r["short_time"] for r in recs])
+        avg_total = np.mean([r["total_time"] for r in recs])
+        avg_nodes = np.mean([r["nodes"] for r in recs])
         rows.append(
             [
                 name,
-                f"{len(recs)}/{N_TRIALS}",
+                f"{sr:.0f}%",
                 f"{lb:.2f}",
                 f"{la:.2f}",
                 f"{pct_len:.1f}%",
-                f"{wb:.1f}",
-                f"{wa:.1f}",
-                f"{pct_wp:.1f}%",
+                f"{pct_wp:.0f}%",
+                f"{avg_plan:.3f}",
+                f"{avg_short:.4f}",
+                f"{avg_total:.3f}",
+                f"{avg_nodes:.0f}",
             ]
         )
         print(
-            f"  {name}: success={len(recs)}/{N_TRIALS}  "
-            f"len {lb:.2f}->{la:.2f} ({pct_len:.1f}% reduction)  "
-            f"wp {wb:.1f}->{wa:.1f} ({pct_wp:.1f}% reduction)"
+            f"  {name}: success={sr:.0f}%  "
+            f"len {lb:.2f}->{la:.2f} ({pct_len:.1f}%)  "
+            f"wp {wb:.0f}->{wa:.0f} ({pct_wp:.0f}%)  "
+            f"plan={avg_plan:.3f}s  short={avg_short:.4f}s  "
+            f"total={avg_total:.3f}s  nodes={avg_nodes:.0f}"
         )
 
-    fig, ax = plt.subplots(figsize=(12, 3))
+    fig, ax = plt.subplots(figsize=(14, 3))
     ax.axis("off")
     col_labels = [
         "Planner",
         "Success",
-        "Avg Len Before",
-        "Avg Len After",
-        "Len Reduction",
-        "Avg WP Before",
-        "Avg WP After",
-        "WP Reduction",
+        "Len Before",
+        "Len After",
+        "Len %",
+        "WP %",
+        "Plan [s]",
+        "Short [s]",
+        "Total [s]",
+        "Nodes",
     ]
     table = ax.table(
         cellText=rows, colLabels=col_labels, loc="center", cellLoc="center"

@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.26 (TeX Live 2024) (preloaded format=pdflatex 2025.2.4)  23 FEB 2026 19:25
+This is pdfTeX, Version 3.141592653-2.6-1.40.26 (TeX Live 2024) (preloaded format=pdflatex 2025.2.4)  23 FEB 2026 20:39
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -911,177 +911,271 @@ LaTeX Font Info:    Font shape `MDB/mdbch/m/n' will be
 (Font)              scaled to size 6.72005pt on input line 67.
 LaTeX Font Info:    Font shape `MDB/mdbch/m/n' will be
 (Font)              scaled to size 4.80003pt on input line 67.
+
+
+! Package subcaption Error: subfigure outside float.
+
+See the subcaption package documentation for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.74 \begin{subfigure}
+                      [t]{0.48\textwidth}
+If you do not understand this error, please take a closer look
+at the documentation of the `subcaption' package, especially the
+section about errors.
+Try typing  <return>  to proceed.
+If that doesn't work, type  X <return>  to quit.
+
+
+! Package caption Error: \setcaptionsubtype outside float.
+
+See the caption package documentation for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.74 \begin{subfigure}[t]{0.48\textwidth}
+                                         
+If you do not understand this error, please take a closer look
+at the documentation of the `caption' package, especially the
+section about errors.
+Try typing  <return>  to proceed.
+If that doesn't work, type  X <return>  to quit.
+
 <results/partA/a1_path_a.png, id=36, 722.7pt x 722.7pt>
 File: results/partA/a1_path_a.png Graphic file (type png)
 <use results/partA/a1_path_a.png>
-Package pdftex.def Info: results/partA/a1_path_a.png  used on input line 74.
-(pdftex.def)             Requested size: 226.06346pt x 226.06374pt.
-LaTeX Font Info:    Font shape `T1/mdbch/m/n' will be
-(Font)              scaled to size 8.64006pt on input line 75.
-LaTeX Font Info:    Font shape `T1/mdbch/m/n' will be
-(Font)              scaled to size 7.68005pt on input line 75.
-LaTeX Font Info:    Font shape `T1/mdbch/m/it' will be
-(Font)              scaled to size 7.68005pt on input line 75.
-LaTeX Font Info:    Font shape `T1/mdbch/m/it' will be
-(Font)              scaled to size 8.64006pt on input line 75.
+Package pdftex.def Info: results/partA/a1_path_a.png  used on input line 76.
+(pdftex.def)             Requested size: 134.45717pt x 134.4583pt.
+
+! Package caption Error: \caption outside float.
+
+See the caption package documentation for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.77   \caption
+               {Path~A: Greedy Forward.}
+If you do not understand this error, please take a closer look
+at the documentation of the `caption' package, especially the
+section about errors.
+Try typing  <return>  to proceed.
+If that doesn't work, type  X <return>  to quit.
+
+
+! Package subcaption Error: subfigure outside float.
+
+See the subcaption package documentation for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.80 \begin{subfigure}
+                      [t]{0.48\textwidth}
+If you do not understand this error, please take a closer look
+at the documentation of the `subcaption' package, especially the
+section about errors.
+Try typing  <return>  to proceed.
+If that doesn't work, type  X <return>  to quit.
+
+
+! Package caption Error: \setcaptionsubtype outside float.
+
+See the caption package documentation for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.80 \begin{subfigure}[t]{0.48\textwidth}
+                                         
+If you do not understand this error, please take a closer look
+at the documentation of the `caption' package, especially the
+section about errors.
+Try typing  <return>  to proceed.
+If that doesn't work, type  X <return>  to quit.
+
 <results/partA/a1_path_b.png, id=38, 722.7pt x 722.7pt>
 File: results/partA/a1_path_b.png Graphic file (type png)
 <use results/partA/a1_path_b.png>
-Package pdftex.def Info: results/partA/a1_path_b.png  used on input line 80.
-(pdftex.def)             Requested size: 226.06346pt x 226.06374pt.
-LaTeX Font Info:    Font shape `OT1/mdbch/m/n' will be
-(Font)              scaled to size 8.64006pt on input line 83.
-LaTeX Font Info:    Font shape `OML/mdbch/m/it' will be
-(Font)              scaled to size 8.64006pt on input line 83.
-LaTeX Font Info:    Font shape `OMS/mdbch/m/n' will be
-(Font)              scaled to size 8.64006pt on input line 83.
-LaTeX Font Info:    Font shape `OMX/mdbch/m/n' will be
-(Font)              scaled to size 8.64006pt on input line 83.
-LaTeX Font Info:    Font shape `OML/mdbch/m/n' will be
-(Font)              scaled to size 8.64006pt on input line 83.
-LaTeX Font Info:    Font shape `MDA/mdbch/m/n' will be
-(Font)              scaled to size 8.64006pt on input line 83.
-LaTeX Font Info:    Font shape `MDB/mdbch/m/n' will be
-(Font)              scaled to size 8.64006pt on input line 83.
-LaTeX Font Info:    Font shape `T1/mdbch/b/n' will be
-(Font)              scaled to size 8.64006pt on input line 91.
-LaTeX Font Info:    Font shape `T1/mdbch/m/it' will be
-(Font)              scaled to size 9.60007pt on input line 104.
+Package pdftex.def Info: results/partA/a1_path_b.png  used on input line 82.
+(pdftex.def)             Requested size: 134.45717pt x 134.4583pt.
 
+! Package caption Error: \caption outside float.
+
+See the caption package documentation for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.83   \caption
+               {Path~B: Looping Revisit.}
+If you do not understand this error, please take a closer look
+at the documentation of the `caption' package, especially the
+section about errors.
+Try typing  <return>  to proceed.
+If that doesn't work, type  X <return>  to quit.
+
+
+Package caption Warning: The option `hypcap=true' will be ignored for this
+(caption)                particular \caption on input line 85.
+See the caption package documentation for explanation.
+
+LaTeX Font Info:    Font shape `T1/mdbch/m/n' will be
+(Font)              scaled to size 8.64006pt on input line 85.
+LaTeX Font Info:    Font shape `T1/mdbch/m/it' will be
+(Font)              scaled to size 8.64006pt on input line 85.
+LaTeX Font Info:    Font shape `OT1/mdbch/m/n' will be
+(Font)              scaled to size 8.64006pt on input line 85.
+LaTeX Font Info:    Font shape `OML/mdbch/m/it' will be
+(Font)              scaled to size 8.64006pt on input line 85.
+LaTeX Font Info:    Font shape `OMS/mdbch/m/n' will be
+(Font)              scaled to size 8.64006pt on input line 85.
+LaTeX Font Info:    Font shape `OMX/mdbch/m/n' will be
+(Font)              scaled to size 8.64006pt on input line 85.
+LaTeX Font Info:    Font shape `OML/mdbch/m/n' will be
+(Font)              scaled to size 8.64006pt on input line 85.
+LaTeX Font Info:    Font shape `MDA/mdbch/m/n' will be
+(Font)              scaled to size 8.64006pt on input line 85.
+LaTeX Font Info:    Font shape `MDB/mdbch/m/n' will be
+(Font)              scaled to size 8.64006pt on input line 85.
+
+Package caption Warning: The option `hypcap=true' will be ignored for this
+(caption)                particular \caption on input line 92.
+See the caption package documentation for explanation.
+
+LaTeX Font Info:    Font shape `T1/mdbch/b/n' will be
+(Font)              scaled to size 8.64006pt on input line 97.
+
+Overfull \hbox (15.25752pt too wide) in paragraph at lines 70--107
+[] [] 
+ []
+
+LaTeX Font Info:    Font shape `T1/mdbch/m/it' will be
+(Font)              scaled to size 9.60007pt on input line 108.
+<results/partA/a1_snapshots_path_a.png, id=40, 1803.8592pt x 389.7762pt>
+File: results/partA/a1_snapshots_path_a.png Graphic file (type png)
+<use results/partA/a1_snapshots_path_a.png>
+Package pdftex.def Info: results/partA/a1_snapshots_path_a.png  used on input l
+ine 117.
+(pdftex.def)             Requested size: 452.11942pt x 97.6936pt.
+<results/partA/a1_snapshots_path_b.png, id=41, 1803.8592pt x 389.7762pt>
+File: results/partA/a1_snapshots_path_b.png Graphic file (type png)
+<use results/partA/a1_snapshots_path_b.png>
+Package pdftex.def Info: results/partA/a1_snapshots_path_b.png  used on input l
+ine 118.
+(pdftex.def)             Requested size: 452.11942pt x 97.6936pt.
+LaTeX Font Info:    Font shape `OT1/mdbch/b/n' will be
+(Font)              scaled to size 8.64006pt on input line 140.
+LaTeX Font Info:    Font shape `OT1/mdbch/b/n' will be
+(Font)              scaled to size 5.76004pt on input line 140.
+LaTeX Font Info:    Font shape `OT1/mdbch/b/n' will be
+(Font)              scaled to size 4.80003pt on input line 140.
+LaTeX Font Info:    Font shape `OML/mdbch/b/it' will be
+(Font)              scaled to size 8.64006pt on input line 140.
+LaTeX Font Info:    Font shape `OML/mdbch/b/it' will be
+(Font)              scaled to size 5.76004pt on input line 140.
+LaTeX Font Info:    Font shape `OML/mdbch/b/it' will be
+(Font)              scaled to size 4.80003pt on input line 140.
+LaTeX Font Info:    Font shape `OMS/mdbch/b/n' will be
+(Font)              scaled to size 8.64006pt on input line 140.
+LaTeX Font Info:    Font shape `OMS/mdbch/b/n' will be
+(Font)              scaled to size 5.76004pt on input line 140.
+LaTeX Font Info:    Font shape `OMS/mdbch/b/n' will be
+(Font)              scaled to size 4.80003pt on input line 140.
+LaTeX Font Info:    Font shape `OMX/mdbch/b/n' will be
+(Font)              scaled to size 8.64006pt on input line 140.
+LaTeX Font Info:    Font shape `OMX/mdbch/b/n' will be
+(Font)              scaled to size 5.76004pt on input line 140.
+LaTeX Font Info:    Font shape `OMX/mdbch/b/n' will be
+(Font)              scaled to size 4.80003pt on input line 140.
+LaTeX Font Info:    Font shape `OML/mdbch/b/n' will be
+(Font)              scaled to size 8.64006pt on input line 140.
+LaTeX Font Info:    Font shape `OML/mdbch/b/n' will be
+(Font)              scaled to size 5.76004pt on input line 140.
+LaTeX Font Info:    Font shape `OML/mdbch/b/n' will be
+(Font)              scaled to size 4.80003pt on input line 140.
+LaTeX Font Info:    Font shape `MDA/mdbch/b/n' will be
+(Font)              scaled to size 8.64006pt on input line 140.
+LaTeX Font Info:    Font shape `MDA/mdbch/b/n' will be
+(Font)              scaled to size 5.76004pt on input line 140.
+LaTeX Font Info:    Font shape `MDA/mdbch/b/n' will be
+(Font)              scaled to size 4.80003pt on input line 140.
+LaTeX Font Info:    Font shape `MDB/mdbch/b/n' will be
+(Font)              scaled to size 8.64006pt on input line 140.
+LaTeX Font Info:    Font shape `MDB/mdbch/b/n' will be
+(Font)              scaled to size 5.76004pt on input line 140.
+LaTeX Font Info:    Font shape `MDB/mdbch/b/n' will be
+(Font)              scaled to size 4.80003pt on input line 140.
 [1
 
 {/usr/local/texlive/2024/texmf-var/fonts/map/pdftex/updmap/pdftex.map}{/usr/loc
 al/texlive/2024/texmf-dist/fonts/enc/dvips/ly1/texnansi.enc} <./results/partA/a
 1_path_a.png> <./results/partA/a1_path_b.png>]
-<results/partA/a1_snapshots_path_a.png, id=56, 1803.8592pt x 389.7762pt>
-File: results/partA/a1_snapshots_path_a.png Graphic file (type png)
-<use results/partA/a1_snapshots_path_a.png>
-Package pdftex.def Info: results/partA/a1_snapshots_path_a.png  used on input l
-ine 113.
-(pdftex.def)             Requested size: 491.43513pt x 106.18663pt.
-<results/partA/a1_snapshots_path_b.png, id=57, 1803.8592pt x 389.7762pt>
-File: results/partA/a1_snapshots_path_b.png Graphic file (type png)
-<use results/partA/a1_snapshots_path_b.png>
-Package pdftex.def Info: results/partA/a1_snapshots_path_b.png  used on input l
-ine 114.
-(pdftex.def)             Requested size: 491.43513pt x 106.18663pt.
-LaTeX Font Info:    Font shape `OT1/mdbch/b/n' will be
-(Font)              scaled to size 8.64006pt on input line 136.
-LaTeX Font Info:    Font shape `OT1/mdbch/b/n' will be
-(Font)              scaled to size 5.76004pt on input line 136.
-LaTeX Font Info:    Font shape `OT1/mdbch/b/n' will be
-(Font)              scaled to size 4.80003pt on input line 136.
-LaTeX Font Info:    Font shape `OML/mdbch/b/it' will be
-(Font)              scaled to size 8.64006pt on input line 136.
-LaTeX Font Info:    Font shape `OML/mdbch/b/it' will be
-(Font)              scaled to size 5.76004pt on input line 136.
-LaTeX Font Info:    Font shape `OML/mdbch/b/it' will be
-(Font)              scaled to size 4.80003pt on input line 136.
-LaTeX Font Info:    Font shape `OMS/mdbch/b/n' will be
-(Font)              scaled to size 8.64006pt on input line 136.
-LaTeX Font Info:    Font shape `OMS/mdbch/b/n' will be
-(Font)              scaled to size 5.76004pt on input line 136.
-LaTeX Font Info:    Font shape `OMS/mdbch/b/n' will be
-(Font)              scaled to size 4.80003pt on input line 136.
-LaTeX Font Info:    Font shape `OMX/mdbch/b/n' will be
-(Font)              scaled to size 8.64006pt on input line 136.
-LaTeX Font Info:    Font shape `OMX/mdbch/b/n' will be
-(Font)              scaled to size 5.76004pt on input line 136.
-LaTeX Font Info:    Font shape `OMX/mdbch/b/n' will be
-(Font)              scaled to size 4.80003pt on input line 136.
-LaTeX Font Info:    Font shape `OML/mdbch/b/n' will be
-(Font)              scaled to size 8.64006pt on input line 136.
-LaTeX Font Info:    Font shape `OML/mdbch/b/n' will be
-(Font)              scaled to size 5.76004pt on input line 136.
-LaTeX Font Info:    Font shape `OML/mdbch/b/n' will be
-(Font)              scaled to size 4.80003pt on input line 136.
-LaTeX Font Info:    Font shape `MDA/mdbch/b/n' will be
-(Font)              scaled to size 8.64006pt on input line 136.
-LaTeX Font Info:    Font shape `MDA/mdbch/b/n' will be
-(Font)              scaled to size 5.76004pt on input line 136.
-LaTeX Font Info:    Font shape `MDA/mdbch/b/n' will be
-(Font)              scaled to size 4.80003pt on input line 136.
-LaTeX Font Info:    Font shape `MDB/mdbch/b/n' will be
-(Font)              scaled to size 8.64006pt on input line 136.
-LaTeX Font Info:    Font shape `MDB/mdbch/b/n' will be
-(Font)              scaled to size 5.76004pt on input line 136.
-LaTeX Font Info:    Font shape `MDB/mdbch/b/n' will be
-(Font)              scaled to size 4.80003pt on input line 136.
-<results/partA/a2_process_noise.png, id=58, 1011.78pt x 794.97pt>
+<results/partA/a2_process_noise.png, id=59, 1011.78pt x 794.97pt>
 File: results/partA/a2_process_noise.png Graphic file (type png)
 <use results/partA/a2_process_noise.png>
 Package pdftex.def Info: results/partA/a2_process_noise.png  used on input line
- 146.
-(pdftex.def)             Requested size: 235.88676pt x 185.33809pt.
+ 158.
+(pdftex.def)             Requested size: 226.06346pt x 177.62325pt.
+LaTeX Font Info:    Font shape `T1/mdbch/m/n' will be
+(Font)              scaled to size 7.68005pt on input line 159.
+LaTeX Font Info:    Font shape `T1/mdbch/m/it' will be
+(Font)              scaled to size 7.68005pt on input line 159.
 LaTeX Font Info:    Font shape `OT1/mdbch/b/n' will be
-(Font)              scaled to size 7.68005pt on input line 147.
+(Font)              scaled to size 7.68005pt on input line 159.
 LaTeX Font Info:    Font shape `OML/mdbch/b/it' will be
-(Font)              scaled to size 7.68005pt on input line 147.
+(Font)              scaled to size 7.68005pt on input line 159.
 LaTeX Font Info:    Font shape `OMS/mdbch/b/n' will be
-(Font)              scaled to size 7.68005pt on input line 147.
+(Font)              scaled to size 7.68005pt on input line 159.
 LaTeX Font Info:    Font shape `OMX/mdbch/b/n' will be
-(Font)              scaled to size 7.68005pt on input line 147.
+(Font)              scaled to size 7.68005pt on input line 159.
 LaTeX Font Info:    Font shape `OML/mdbch/b/n' will be
-(Font)              scaled to size 7.68005pt on input line 147.
+(Font)              scaled to size 7.68005pt on input line 159.
 LaTeX Font Info:    Font shape `MDA/mdbch/b/n' will be
-(Font)              scaled to size 7.68005pt on input line 147.
+(Font)              scaled to size 7.68005pt on input line 159.
 LaTeX Font Info:    Font shape `MDB/mdbch/b/n' will be
-(Font)              scaled to size 7.68005pt on input line 147.
-<results/partA/a2_measurement_noise.png, id=59, 1011.78pt x 794.97pt>
+(Font)              scaled to size 7.68005pt on input line 159.
+<results/partA/a2_measurement_noise.png, id=60, 1011.78pt x 794.97pt>
 File: results/partA/a2_measurement_noise.png Graphic file (type png)
 <use results/partA/a2_measurement_noise.png>
 Package pdftex.def Info: results/partA/a2_measurement_noise.png  used on input 
-line 152.
-(pdftex.def)             Requested size: 235.88676pt x 185.33809pt.
-<results/partB/b1_constrained.png, id=60, 1156.32pt x 505.89pt>
+line 164.
+(pdftex.def)             Requested size: 226.06346pt x 177.62325pt.
+<results/partB/b1_open.png, id=63, 1156.32pt x 505.89pt>
+File: results/partB/b1_open.png Graphic file (type png)
+<use results/partB/b1_open.png>
+Package pdftex.def Info: results/partB/b1_open.png  used on input line 188.
+(pdftex.def)             Requested size: 235.88676pt x 103.19864pt.
+<results/partB/b1_constrained.png, id=64, 1156.32pt x 505.89pt>
 File: results/partB/b1_constrained.png Graphic file (type png)
 <use results/partB/b1_constrained.png>
 Package pdftex.def Info: results/partB/b1_constrained.png  used on input line 1
-72.
-(pdftex.def)             Requested size: 294.86407pt x 128.99637pt.
+95.
+(pdftex.def)             Requested size: 235.88676pt x 103.19864pt.
 
 
 Package hyperref Warning: Token not allowed in a PDF string (Unicode):
-(hyperref)                removing `math shift' on input line 177.
+(hyperref)                removing `math shift' on input line 203.
 
 
 Package hyperref Warning: Token not allowed in a PDF string (Unicode):
-(hyperref)                removing `math shift' on input line 177.
+(hyperref)                removing `math shift' on input line 203.
 
 [2 <./results/partA/a1_snapshots_path_a.png> <./results/partA/a1_snapshots_path
-_b.png>]
-LaTeX Font Info:    Font shape `T1/cmtt/m/n' will be
-(Font)              scaled to size 9.64806pt on input line 205.
-Package microtype Info: Loading generic protrusion settings for font family
-(microtype)             `cmtt' (encoding: T1).
-(microtype)             For optimal results, create family-specific settings.
-(microtype)             See the microtype manual for details.
+_b.png>] [3 <./results/partA/a2_process_noise.png> <./results/partA/a2_measurem
+ent_noise.png> <./results/partB/b1_open.png> <./results/partB/b1_constrained.pn
+g>]
+<results/partB/b3_combined.png, id=89, 867.24pt x 794.97pt>
+File: results/partB/b3_combined.png Graphic file (type png)
+<use results/partB/b3_combined.png>
+Package pdftex.def Info: results/partB/b3_combined.png  used on input line 238.
 
-
-Package caption Warning: The option `hypcap=true' will be ignored for this
-(caption)                particular \caption on input line 234.
-See the caption package documentation for explanation.
-
-<results/partC/c_before_after.png, id=72, 1011.78pt x 867.24pt>
+(pdftex.def)             Requested size: 383.3188pt x 351.37694pt.
+<results/partC/c_before_after.png, id=90, 1011.78pt x 867.24pt>
 File: results/partC/c_before_after.png Graphic file (type png)
 <use results/partC/c_before_after.png>
 Package pdftex.def Info: results/partC/c_before_after.png  used on input line 2
-50.
-(pdftex.def)             Requested size: 270.29082pt x 231.68336pt.
-
-Package caption Warning: The option `hypcap=true' will be ignored for this
-(caption)                particular \caption on input line 251.
-See the caption package documentation for explanation.
-
-
-Overfull \hbox (15.25754pt too wide) in paragraph at lines 230--254
-[] [] 
- []
-
-[3 <./results/partA/a2_process_noise.png> <./results/partA/a2_measurement_noise
-.png> <./results/partB/b1_constrained.png>] [4{/usr/local/texlive/2024/texmf-di
-st/fonts/enc/dvips/cm-super/cm-super-t1.enc} <./results/partC/c_before_after.pn
-g>] (./report.aux)
+69.
+(pdftex.def)             Requested size: 353.8339pt x 303.28712pt.
+ [4 <./results/partB/b3_combined.png>] [5 <./results/partC/c_before_after.png>]
+ (./report.aux)
  ***********
 LaTeX2e <2023-11-01> patch level 1
 L3 programming layer <2024-02-20>
@@ -1090,13 +1184,13 @@ Package rerunfilecheck Info: File `report.out' has not changed.
 (rerunfilecheck)             Checksum: EF38D3D5F4310172E613EBF44B342F16;1877.
  ) 
 Here is how much of TeX's memory you used:
- 18268 strings out of 474116
- 301348 string characters out of 5743683
- 1941187 words of memory out of 5000000
- 39987 multiletter control sequences out of 15000+600000
- 652443 words of font info for 383 fonts, out of 8000000 for 9000
+ 18334 strings out of 474116
+ 302429 string characters out of 5743683
+ 1947187 words of memory out of 5000000
+ 40003 multiletter control sequences out of 15000+600000
+ 655542 words of font info for 419 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
- 69i,12n,79p,1195b,727s stack positions out of 10000i,1000n,20000p,200000b,200000s
+ 69i,12n,79p,1195b,725s stack positions out of 10000i,1000n,20000p,200000b,200000s
 </usr/local/texlive/2024/texmf-dist/fonts/type1/bitstrea/charter/bchb8a.pfb><
 /usr/local/texlive/2024/texmf-dist/fonts/type1/bitstrea/charter/bchbi8a.pfb></u
 sr/local/texlive/2024/texmf-dist/fonts/type1/bitstrea/charter/bchr8a.pfb></usr/
@@ -1105,14 +1199,14 @@ cal/texlive/2024/texmf-dist/fonts/type1/public/mathdesign/mdbch/md-chb8t.pfb></
 usr/local/texlive/2024/texmf-dist/fonts/type1/public/mathdesign/mdbch/md-chr7m.
 pfb></usr/local/texlive/2024/texmf-dist/fonts/type1/public/mathdesign/mdbch/md-
 chr7t.pfb></usr/local/texlive/2024/texmf-dist/fonts/type1/public/mathdesign/mdb
-ch/md-chr7y.pfb></usr/local/texlive/2024/texmf-dist/fonts/type1/public/mathdesi
-gn/mdbch/md-chr8t.pfb></usr/local/texlive/2024/texmf-dist/fonts/type1/public/ma
-thdesign/mdbch/md-chri7m.pfb></usr/local/texlive/2024/texmf-dist/fonts/type1/pu
-blic/cm-super/sftt0900.pfb>
-Output written on report.pdf (4 pages, 2057477 bytes).
+ch/md-chr7v.pfb></usr/local/texlive/2024/texmf-dist/fonts/type1/public/mathdesi
+gn/mdbch/md-chr7y.pfb></usr/local/texlive/2024/texmf-dist/fonts/type1/public/ma
+thdesign/mdbch/md-chr8t.pfb></usr/local/texlive/2024/texmf-dist/fonts/type1/pub
+lic/mathdesign/mdbch/md-chri7m.pfb>
+Output written on report.pdf (5 pages, 3197997 bytes).
 PDF statistics:
- 149 PDF objects out of 1000 (max. 8388607)
- 103 compressed objects within 2 object streams
- 23 named destinations out of 1000 (max. 500000)
- 108649 words of extra memory for PDF output out of 128383 (max. 10000000)
+ 159 PDF objects out of 1000 (max. 8388607)
+ 108 compressed objects within 2 object streams
+ 24 named destinations out of 1000 (max. 500000)
+ 110707 words of extra memory for PDF output out of 128383 (max. 10000000)
 

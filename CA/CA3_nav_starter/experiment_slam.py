@@ -135,16 +135,25 @@ def run_slam_experiment(
                 }
             )
 
+    # --- Final landmark position error (map accuracy) ---
+    est_lms = ekf.get_estimated_landmarks()
+    lm_errors: list[float] = []
+    for lm_id, est_pos in est_lms.items():
+        true_pos = env.landmarks[lm_id]
+        lm_errors.append(float(np.linalg.norm(est_pos - true_pos)))
+    avg_landmark_error = float(np.mean(lm_errors)) if lm_errors else 0.0
+
     return {
         "env": env,
         "ekf": ekf,
         "true_path": sim.get_true_path(),
         "est_path": ekf.get_estimated_path(),
-        "est_landmarks": ekf.get_estimated_landmarks(),
+        "est_landmarks": est_lms,
         "landmark_covs": ekf.get_landmark_covariances(),
         "pose_errors": np.array(pose_errors),
         "pose_uncertainties": np.array(pose_uncertainties),
         "avg_landmark_uncertainties": np.array(avg_landmark_uncertainties),
+        "avg_landmark_error": avg_landmark_error,
         "snapshots": snapshots,
     }
 
@@ -451,8 +460,12 @@ def experiment_a2() -> None:
         r_results[level] = run_slam_experiment(
             control_looping_revisit, init_pose, R, Q_fixed
         )
+        d = r_results[level]
         print(
-            f"    R={level}: final pose err={r_results[level]['pose_errors'][-1]:.4f}"
+            f"    R={level}: pose_err={d['pose_errors'][-1]:.4f}  "
+            f"lm_err={d['avg_landmark_error']:.4f}  "
+            f"pose_unc={d['pose_uncertainties'][-1]:.4f}  "
+            f"lm_unc={d['avg_landmark_uncertainties'][-1]:.4f}"
         )
 
     fig, axes = plt.subplots(3, 1, figsize=(14, 11), sharex=True)
@@ -477,8 +490,12 @@ def experiment_a2() -> None:
         q_results[level] = run_slam_experiment(
             control_looping_revisit, init_pose, R_fixed, Q
         )
+        d = q_results[level]
         print(
-            f"    Q={level}: final pose err={q_results[level]['pose_errors'][-1]:.4f}"
+            f"    Q={level}: pose_err={d['pose_errors'][-1]:.4f}  "
+            f"lm_err={d['avg_landmark_error']:.4f}  "
+            f"pose_unc={d['pose_uncertainties'][-1]:.4f}  "
+            f"lm_unc={d['avg_landmark_uncertainties'][-1]:.4f}"
         )
 
     fig, axes = plt.subplots(3, 1, figsize=(14, 11), sharex=True)
@@ -509,21 +526,19 @@ def experiment_a2() -> None:
                 [
                     sweep_name,
                     level,
-                    f"{np.mean(data['pose_errors']):.4f}",
                     f"{data['pose_errors'][-1]:.4f}",
+                    f"{data['avg_landmark_error']:.4f}",
                     f"{data['pose_uncertainties'][-1]:.4f}",
                     f"{data['avg_landmark_uncertainties'][-1]:.4f}",
-                    str(len(data["est_landmarks"])),
                 ]
             )
     col_labels = [
         "Sweep",
         "Level",
-        "Mean Pose Err",
         "Final Pose Err",
+        "Avg LM Pos Err",
         "Final Pose Unc",
         "Final Avg LM Unc",
-        "# LMs",
     ]
     table = ax_tab.table(
         cellText=rows, colLabels=col_labels, loc="center", cellLoc="center"

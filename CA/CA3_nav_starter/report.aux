@@ -4,42 +4,53 @@
 \providecommand\HyField@AuxAddToCoFields[2]{}
 \@writefile{toc}{\contentsline {section}{\numberline {1}Part A: EKF-SLAM Trajectory and Uncertainty}{1}{section.1}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsection}{\numberline {1.1}A1.\ Path Design: Which Trajectory is Better for SLAM?}{1}{subsection.1.1}\protected@file@percent }
-\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces True path (black) vs.\ estimated path (blue dashed) with landmark $2\sigma $ ellipses. Green square = start, red triangle = end.}}{1}{figure.caption.1}\protected@file@percent }
-\providecommand*\caption@xref[2]{\@setref\relax\@undefined{#1}}
-\newlabel{fig:a1-traj}{{1}{1}{True path (black) vs.\ estimated path (blue dashed) with landmark $2\sigma $ ellipses. Green square = start, red triangle = end}{figure.caption.1}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces True vs.\ estimated path. Pink/red ellipses = $2\sigma $ landmark uncertainty.}}{1}{figure.1}\protected@file@percent }
+\newlabel{fig:a1-traj}{{1}{1}{True vs.\ estimated path. Pink/red ellipses = $2\sigma $ landmark uncertainty}{figure.1}{}}
 \newlabel{fig:a1-traj@cref}{{[figure][1][]1}{[1][1][]1}}
-\@writefile{lot}{\contentsline {table}{\numberline {1}{\ignorespaces A1 trajectory comparison (500 steps, medium noise).}}{1}{table.caption.2}\protected@file@percent }
-\newlabel{tab:a1}{{1}{1}{A1 trajectory comparison (500 steps, medium noise)}{table.caption.2}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {1}{\ignorespaces A1 comparison (500 steps).}}{1}{table.1}\protected@file@percent }
+\newlabel{tab:a1}{{1}{1}{A1 comparison (500 steps)}{table.1}{}}
 \newlabel{tab:a1@cref}{{[table][1][]1}{[1][1][]1}}
-\@writefile{toc}{\contentsline {paragraph}{Uncertainty ellipse evolution.}{2}{table.caption.2}\protected@file@percent }
-\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces Uncertainty snapshots. \textit  {Top:} Path~A, ellipses stay fixed after first observation. \textit  {Bottom:} Path~B, ellipses collapse with repeated re-observation. Landmarks far from the orbit (e.g.\ top-right) keep larger ellipses.}}{2}{figure.caption.3}\protected@file@percent }
-\newlabel{fig:snapshots}{{2}{2}{Uncertainty snapshots. \textit {Top:} Path~A, ellipses stay fixed after first observation. \textit {Bottom:} Path~B, ellipses collapse with repeated re-observation. Landmarks far from the orbit (e.g.\ top-right) keep larger ellipses}{figure.caption.3}{}}
-\newlabel{fig:snapshots@cref}{{[figure][2][]2}{[1][2][]2}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {1.2}A2.\ Noise Sensitivity}{2}{subsection.1.2}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {2}{\ignorespaces Noise sensitivity. Left: varying process noise $\mb  {R}$ (Q fixed). Right: varying measurement noise $\mb  {Q}$ (R fixed).}}{2}{table.caption.4}\protected@file@percent }
-\newlabel{tab:a2}{{2}{2}{Noise sensitivity. Left: varying process noise $\mb {R}$ (Q fixed). Right: varying measurement noise $\mb {Q}$ (R fixed)}{table.caption.4}{}}
-\newlabel{tab:a2@cref}{{[table][2][]2}{[1][2][]2}}
+\@writefile{toc}{\contentsline {paragraph}{Uncertainty ellipse evolution.}{1}{table.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {1.2}A2.\ Noise Sensitivity}{1}{subsection.1.2}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces Uncertainty snapshots. \textit  {Top:} Path~A, ellipses stay fixed after first observation. \textit  {Bottom:} Path~B, ellipses collapse with repeated re-observation.}}{2}{figure.caption.1}\protected@file@percent }
+\providecommand*\caption@xref[2]{\@setref\relax\@undefined{#1}}
+\newlabel{fig:snapshots}{{2}{2}{Uncertainty snapshots. \textit {Top:} Path~A, ellipses stay fixed after first observation. \textit {Bottom:} Path~B, ellipses collapse with repeated re-observation}{figure.caption.1}{}}
+\newlabel{fig:snapshots@cref}{{[figure][2][]2}{[1][1][]2}}
+\@writefile{lot}{\contentsline {table}{\numberline {2}{\ignorespaces Noise sensitivity (all in metres). Left: varying process noise $\mb  {R}$ (Q fixed at Med). Right: varying measurement noise $\mb  {Q}$ (R fixed at Med). Pose/LM Err = position error. Pose/LM Unc = $\sqrt  {\mathrm  {trace}(\mb  {P})}$.}}{2}{table.caption.2}\protected@file@percent }
+\newlabel{tab:a2}{{2}{2}{Noise sensitivity (all in metres). Left: varying process noise $\mb {R}$ (Q fixed at Med). Right: varying measurement noise $\mb {Q}$ (R fixed at Med). Pose/LM Err = position error. Pose/LM Unc = $\sqrt {\mathrm {trace}(\mb {P})}$}{table.caption.2}{}}
+\newlabel{tab:a2@cref}{{[table][2][]2}{[1][1][]2}}
 \@writefile{toc}{\contentsline {section}{\numberline {2}Part B: PRM vs RRT Planning Comparison}{2}{section.2}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsection}{\numberline {2.1}B1.\ Start/Goal Scenarios}{2}{subsection.2.1}\protected@file@percent }
-\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces A2 noise sensitivity. Higher process noise (left, red) is much worse across all metrics. Measurement noise (right) has a smaller effect.}}{3}{figure.caption.5}\protected@file@percent }
-\newlabel{fig:a2-noise}{{3}{3}{A2 noise sensitivity. Higher process noise (left, red) is much worse across all metrics. Measurement noise (right) has a smaller effect}{figure.caption.5}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces A2 noise sensitivity. Process noise (left) is far more damaging than measurement noise (right).}}{3}{figure.caption.3}\protected@file@percent }
+\newlabel{fig:a2-noise}{{3}{3}{A2 noise sensitivity. Process noise (left) is far more damaging than measurement noise (right)}{figure.caption.3}{}}
 \newlabel{fig:a2-noise@cref}{{[figure][3][]3}{[1][2][]3}}
-\@writefile{lof}{\contentsline {figure}{\numberline {4}{\ignorespaces Constrained scenario. PRM (left) and RRT (right) with obstacle radius 1.0.}}{3}{figure.caption.6}\protected@file@percent }
-\newlabel{fig:b1}{{4}{3}{Constrained scenario. PRM (left) and RRT (right) with obstacle radius 1.0}{figure.caption.6}{}}
+\newlabel{fig:b1-open}{{4a}{3}{Open (radius 0.8). PRM builds a dense roadmap; RRT grows toward the goal}{figure.caption.4}{}}
+\newlabel{fig:b1-open@cref}{{[subfigure][1][4]4a}{[1][2][]3}}
+\newlabel{sub@fig:b1-open}{{a}{3}{Open (radius 0.8). PRM builds a dense roadmap; RRT grows toward the goal}{figure.caption.4}{}}
+\newlabel{sub@fig:b1-open@cref}{{[subfigure][1][4]4a}{[1][2][]3}}
+\newlabel{fig:b1-constrained}{{4b}{3}{Constrained (radius 1.0). RRT threads through narrow gaps with fewer nodes}{figure.caption.4}{}}
+\newlabel{fig:b1-constrained@cref}{{[subfigure][2][4]4b}{[1][2][]3}}
+\newlabel{sub@fig:b1-constrained}{{b}{3}{Constrained (radius 1.0). RRT threads through narrow gaps with fewer nodes}{figure.caption.4}{}}
+\newlabel{sub@fig:b1-constrained@cref}{{[subfigure][2][4]4b}{[1][2][]3}}
+\@writefile{lof}{\contentsline {figure}{\numberline {4}{\ignorespaces B1 scenarios. Blue = roadmap/tree edges, green = solution path. Each panel shows PRM (left) and RRT (right).}}{3}{figure.caption.4}\protected@file@percent }
+\newlabel{fig:b1}{{4}{3}{B1 scenarios. Blue = roadmap/tree edges, green = solution path. Each panel shows PRM (left) and RRT (right)}{figure.caption.4}{}}
 \newlabel{fig:b1@cref}{{[figure][4][]4}{[1][2][]3}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {2.2}B2.\ Metrics Comparison (Constrained, $N{=}30$)}{3}{subsection.2.2}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {3}{\ignorespaces B2 metrics (constrained scenario, 30 trials).}}{3}{table.caption.5}\protected@file@percent }
+\newlabel{tab:b2}{{3}{3}{B2 metrics (constrained scenario, 30 trials)}{table.caption.5}{}}
+\newlabel{tab:b2@cref}{{[table][3][]3}{[1][2][]3}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {2.3}B3.\ Parameter Studies}{3}{subsection.2.3}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {3}Part C: Improving PRM and RRT}{3}{section.3}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {3}{\ignorespaces B2 metrics (constrained scenario, 30 trials).}}{4}{table.caption.7}\protected@file@percent }
-\newlabel{tab:b2}{{3}{4}{B2 metrics (constrained scenario, 30 trials)}{table.caption.7}{}}
-\newlabel{tab:b2@cref}{{[table][3][]3}{[1][2][]4}}
-\@writefile{lot}{\contentsline {table}{\numberline {4}{\ignorespaces B3 parameter studies. PRM: $8\times $ more samples gives only 3.6\% shorter paths. RRT: goal bias is the strongest factor.}}{4}{table.caption.8}\protected@file@percent }
-\newlabel{tab:b3}{{4}{4}{B3 parameter studies. PRM: $8\times $ more samples gives only 3.6\% shorter paths. RRT: goal bias is the strongest factor}{table.caption.8}{}}
-\newlabel{tab:b3@cref}{{[table][4][]4}{[1][3][]4}}
-\@writefile{lot}{\contentsline {table}{\numberline {5}{\ignorespaces Shortcutting results (20 trials).}}{4}{table.5}\protected@file@percent }
-\newlabel{tab:c}{{5}{4}{Shortcutting results (20 trials)}{table.5}{}}
-\newlabel{tab:c@cref}{{[table][5][]5}{[1][3][]4}}
-\@writefile{lof}{\contentsline {figure}{\numberline {5}{\ignorespaces Before (blue) vs.\ after (green) shortcutting. RRT (right) shows large simplification.}}{4}{figure.5}\protected@file@percent }
-\newlabel{fig:c}{{5}{4}{Before (blue) vs.\ after (green) shortcutting. RRT (right) shows large simplification}{figure.5}{}}
-\newlabel{fig:c@cref}{{[figure][5][]5}{[1][3][]4}}
-\gdef \@abspage@last{4}
+\@writefile{toc}{\contentsline {paragraph}{PRM: n\_samples.}{3}{subsection.2.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{RRT: step\_size.}{4}{subsection.2.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{RRT: goal\_sample\_rate.}{4}{subsection.2.3}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {5}{\ignorespaces B3 parameter studies. Left: path length. Right: planning time. Top: PRM n\_samples. Middle: RRT step\_size. Bottom: RRT goal\_sample\_rate.}}{4}{figure.caption.6}\protected@file@percent }
+\newlabel{fig:b3}{{5}{4}{B3 parameter studies. Left: path length. Right: planning time. Top: PRM n\_samples. Middle: RRT step\_size. Bottom: RRT goal\_sample\_rate}{figure.caption.6}{}}
+\newlabel{fig:b3@cref}{{[figure][5][]5}{[1][4][]4}}
+\@writefile{toc}{\contentsline {section}{\numberline {3}Part C: Improving PRM and RRT}{4}{section.3}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {4}{\ignorespaces Shortcutting results (20 trials). Plan = planning time only. Total = planning + shortcutting.}}{5}{table.caption.7}\protected@file@percent }
+\newlabel{tab:c}{{4}{5}{Shortcutting results (20 trials). Plan = planning time only. Total = planning + shortcutting}{table.caption.7}{}}
+\newlabel{tab:c@cref}{{[table][4][]4}{[1][4][]5}}
+\@writefile{lof}{\contentsline {figure}{\numberline {6}{\ignorespaces Before (blue) vs.\ after (green) shortcutting. RRT (right) shows dramatic simplification.}}{5}{figure.caption.8}\protected@file@percent }
+\newlabel{fig:c}{{6}{5}{Before (blue) vs.\ after (green) shortcutting. RRT (right) shows dramatic simplification}{figure.caption.8}{}}
+\newlabel{fig:c@cref}{{[figure][6][]6}{[1][4][]5}}
+\gdef \@abspage@last{5}
